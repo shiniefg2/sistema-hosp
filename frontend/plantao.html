@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0b3546">
+  <title>Plantões - Baymax</title>
+  <link rel="stylesheet" href="css/system.css">
+  <style>
+    body.page-plantoes {
+      min-height: 100vh;
+      padding: 0 0 28px;
+      background: var(--app-background);
+    }
+
+    .plantao-layout {
+      grid-template-columns: minmax(0, 1.5fr) minmax(300px, 0.8fr);
+      max-width: 1240px;
+    }
+
+    .plantao-heading {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .plantao-heading h2 {
+      margin: 0 0 6px;
+      font-size: 20px;
+    }
+
+    .plantao-heading p,
+    .plantao-empty,
+    .plantao-hint {
+      color: var(--app-muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .plantao-count {
+      flex: 0 0 auto;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: var(--app-primary-soft);
+      color: var(--app-primary-strong);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .plantao-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .plantao-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 14px;
+      padding: 16px;
+      border: 1px solid var(--app-border);
+      border-left: 4px solid var(--app-primary);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .plantao-card h3 {
+      margin: 0 0 5px;
+      color: var(--app-ink);
+      font-size: 15px;
+      overflow-wrap: anywhere;
+    }
+
+    .plantao-card p {
+      margin: 3px 0;
+      color: var(--app-muted);
+      font-size: 13px;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .plantao-card .plantao-data {
+      color: var(--app-ink);
+      font-weight: 650;
+    }
+
+    .plantao-card .plantao-notes {
+      margin-top: 8px;
+      color: #566672;
+    }
+
+    .plantao-delete {
+      border-color: #f2caca;
+      background: #fff7f7;
+      color: #ae3030;
+    }
+
+    .plantao-delete:hover:not(:disabled) {
+      border-color: #e8aaaa;
+      background: #fff0f0;
+      color: #902323;
+    }
+
+    .plantao-form {
+      display: grid;
+      gap: 14px;
+    }
+
+    .plantao-form h2 {
+      margin-bottom: 2px;
+      font-size: 18px;
+    }
+
+    .plantao-form label {
+      display: grid;
+      gap: 6px;
+    }
+
+    .plantao-form input,
+    .plantao-form select,
+    .plantao-form textarea {
+      width: 100%;
+    }
+
+    .plantao-times {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .plantao-message {
+      min-height: 20px;
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .plantao-message.error {
+      color: #b42318;
+    }
+
+    .plantao-message.success {
+      color: #18733b;
+    }
+
+    @media (max-width: 760px) {
+      .plantao-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .plantao-form-panel {
+        grid-row: 1;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .plantao-layout {
+        padding: 0 12px;
+      }
+
+      .plantao-card {
+        grid-template-columns: 1fr;
+      }
+
+      .plantao-delete {
+        justify-self: start;
+      }
+    }
+  </style>
+</head>
+<body class="page-admin page-plantoes">
+  <header class="admin-topbar">
+    <div>
+      <span class="admin-eyebrow">BAYMAX • CENTRAL DE CONTROLE</span>
+      <h1>Escala de plantões</h1>
+    </div>
+  </header>
+
+  <main class="admin-layout plantao-layout">
+    <section class="admin-dashboard" aria-labelledby="titulo-lista">
+      <div class="plantao-heading">
+        <div>
+          <h2 id="titulo-lista">Plantões cadastrados</h2>
+          <p>Escala compartilhada com os administradores do sistema.</p>
+        </div>
+        <span class="plantao-count" id="total-plantoes">0 plantões</span>
+      </div>
+      <div class="plantao-list" id="lista-plantoes" aria-live="polite">
+        <p class="plantao-empty">Carregando plantões...</p>
+      </div>
+    </section>
+
+    <section class="admin-dashboard plantao-form-panel" aria-labelledby="titulo-formulario">
+      <form class="plantao-form" id="form-plantao">
+        <h2 id="titulo-formulario">Adicionar plantão</h2>
+
+        <label for="profissional">
+          Profissional
+          <input id="profissional" name="profissional" type="text" maxlength="120" autocomplete="name" required>
+        </label>
+
+        <label for="setor">
+          Setor
+          <select id="setor" name="setor" required>
+            <option value="">Selecione o setor</option>
+            <option value="medico">Médico</option>
+            <option value="enfermagem">Enfermagem</option>
+            <option value="tecnico_enfermagem">Técnico de enfermagem</option>
+            <option value="laboratorio">Laboratório</option>
+            <option value="triagem">Triagem</option>
+            <option value="atendimento">Atendimento</option>
+            <option value="medicacao">Medicação</option>
+            <option value="outro">Outro</option>
+          </select>
+        </label>
+
+        <label for="data">
+          Data de início
+          <input id="data" name="data" type="date" required>
+        </label>
+
+        <div class="plantao-times">
+          <label for="inicio">
+            Início
+            <input id="inicio" name="inicio" type="time" required>
+          </label>
+          <label for="fim">
+            Término
+            <input id="fim" name="fim" type="time" required>
+          </label>
+        </div>
+        <p class="plantao-hint">O horário de término pode ser no dia seguinte.</p>
+
+        <label for="observacoes">
+          Observações <span class="plantao-hint">(opcional)</span>
+          <textarea id="observacoes" name="observacoes" maxlength="500" rows="3"></textarea>
+        </label>
+
+        <button type="submit" id="btn-salvar">Adicionar à escala</button>
+        <p class="plantao-message" id="mensagem" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script>
+    let sessao;
+
+    try {
+      sessao = JSON.parse(sessionStorage.getItem("usuario") || "null");
+    } catch (erro) {
+      console.error("Sessão inválida:", erro);
+    }
+
+    const acessoAdmin = Boolean(sessao && sessao.tipo === "admin" && sessao.token);
+    if (acessoAdmin) Baymax.iniciar(["admin"]);
+    const form = document.getElementById("form-plantao");
+    const botaoSalvar = document.getElementById("btn-salvar");
+    const lista = document.getElementById("lista-plantoes");
+    const total = document.getElementById("total-plantoes");
+    const mensagem = document.getElementById("mensagem");
+    const campoData = document.getElementById("data");
+    const setores = {
+      medico: "Médico",
+      enfermagem: "Enfermagem",
+      triagem: "Triagem",
+      atendimento: "Atendimento",
+      medicacao: "Medicação",
+      outro: "Outro"
+    };
+
+    function dataLocalHoje() {
+      const hoje = new Date();
+      const ano = hoje.getFullYear();
+      const mes = String(hoje.getMonth() + 1).padStart(2, "0");
+      const dia = String(hoje.getDate()).padStart(2, "0");
+      return `${ano}-${mes}-${dia}`;
+    }
+
+    function exibirMensagem(texto, tipo = "") {
+      mensagem.textContent = texto;
+      mensagem.className = `plantao-message${tipo ? ` ${tipo}` : ""}`;
+    }
+
+    async function requisicao(url, opcoes = {}) {
+      const resposta = await fetch(url, {
+        ...opcoes,
+        headers: {
+          "Accept": "application/json",
+          ...(opcoes.body ? { "Content-Type": "application/json" } : {}),
+          "Authorization": `Bearer ${sessao.token}`,
+          ...opcoes.headers
+        }
+      });
+
+      let dados;
+      try {
+        dados = await resposta.json();
+      } catch {
+        throw new Error("O servidor retornou uma resposta inválida.");
+      }
+
+      if (!resposta.ok) {
+        if (resposta.status === 401) {
+          sessionStorage.removeItem("usuario");
+          window.location.replace("index.html");
+        }
+        throw new Error(dados.erro || "Não foi possível concluir a operação.");
+      }
+
+      return dados;
+    }
+
+    function criarTexto(tag, classe, texto) {
+      const elemento = document.createElement(tag);
+      if (classe) elemento.className = classe;
+      elemento.textContent = texto;
+      return elemento;
+    }
+
+    function formatarData(data) {
+      const dataLocal = new Date(`${data}T12:00:00`);
+      return new Intl.DateTimeFormat("pt-BR", {
+        weekday: "long",
+        day: "2-digit",
+        month: "long",
+        year: "numeric"
+      }).format(dataLocal);
+    }
+
+    function renderizarPlantoes(plantoes) {
+      lista.replaceChildren();
+      total.textContent = `${plantoes.length} plantão${plantoes.length === 1 ? "" : "es"}`;
+
+      if (plantoes.length === 0) {
+        lista.appendChild(criarTexto("p", "plantao-empty", "Nenhum plantão cadastrado."));
+        return;
+      }
+
+      plantoes.forEach(plantao => {
+        const card = document.createElement("article");
+        card.className = "plantao-card";
+
+        const detalhes = document.createElement("div");
+        detalhes.appendChild(criarTexto("h3", "", plantao.profissional));
+        detalhes.appendChild(criarTexto("p", "plantao-data", formatarData(plantao.data)));
+        detalhes.appendChild(criarTexto(
+          "p",
+          "",
+          `${setores[plantao.setor] || plantao.setor} · ${plantao.inicio}–${plantao.fim}${plantao.fim < plantao.inicio ? " (dia seguinte)" : ""}`
+        ));
+        if (plantao.observacoes) {
+          detalhes.appendChild(criarTexto("p", "plantao-notes", plantao.observacoes));
+        }
+
+        const excluir = document.createElement("button");
+        excluir.type = "button";
+        excluir.className = "plantao-delete";
+        excluir.textContent = "Excluir";
+        excluir.setAttribute("aria-label", `Excluir plantão de ${plantao.profissional}`);
+        excluir.addEventListener("click", () => excluirPlantao(plantao, excluir));
+
+        card.append(detalhes, excluir);
+        lista.appendChild(card);
+      });
+    }
+
+    async function carregarPlantoes() {
+      lista.replaceChildren(criarTexto("p", "plantao-empty", "Carregando plantões..."));
+
+      try {
+        const plantoes = await requisicao("/plantoes");
+        if (!Array.isArray(plantoes)) {
+          throw new Error("O servidor retornou uma escala inválida.");
+        }
+        renderizarPlantoes(plantoes);
+      } catch (erro) {
+        console.error("Erro ao carregar plantões:", erro);
+        lista.replaceChildren(criarTexto("p", "plantao-empty", erro.message));
+      }
+    }
+
+    async function excluirPlantao(plantao, botao) {
+      if (!window.confirm(`Excluir o plantão de ${plantao.profissional}?`)) return;
+
+      botao.disabled = true;
+      try {
+        await requisicao(`/plantoes/${encodeURIComponent(plantao.id)}`, { method: "DELETE" });
+        exibirMensagem("Plantão excluído.", "success");
+        await carregarPlantoes();
+      } catch (erro) {
+        console.error("Erro ao excluir plantão:", erro);
+        exibirMensagem(erro.message, "error");
+        botao.disabled = false;
+      }
+    }
+
+    form.addEventListener("submit", async evento => {
+      evento.preventDefault();
+      if (botaoSalvar.disabled) return;
+
+      botaoSalvar.disabled = true;
+      botaoSalvar.textContent = "Salvando...";
+      exibirMensagem("");
+
+      const dados = Object.fromEntries(new FormData(form).entries());
+
+      try {
+        await requisicao("/plantoes", {
+          method: "POST",
+          body: JSON.stringify(dados)
+        });
+        form.reset();
+        campoData.value = dataLocalHoje();
+        exibirMensagem("Plantão adicionado à escala.", "success");
+        await carregarPlantoes();
+      } catch (erro) {
+        console.error("Erro ao salvar plantão:", erro);
+        exibirMensagem(erro.message, "error");
+      } finally {
+        botaoSalvar.disabled = false;
+        botaoSalvar.textContent = "Adicionar à escala";
+      }
+    });
+
+    if (!acessoAdmin) {
+      window.location.replace("index.html");
+    } else {
+      campoData.value = dataLocalHoje();
+      carregarPlantoes();
+    }
+  </script>
+</body>
+</html>

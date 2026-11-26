@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#087eac">
+  <title>Agenda de consultas - Baymax</title>
+  <link rel="stylesheet" href="css/system.css">
+</head>
+<body class="page-module page-agenda">
+  <main class="module-layout">
+    <header class="module-heading">
+      <div>
+        <span class="module-kicker">AGENDA AMBULATORIAL</span>
+        <h1>Consultas</h1>
+        <p>Agende pacientes, consulte horários e acompanhe confirmações.</p>
+      </div>
+      <div class="agenda-date-controls" aria-label="Navegação da agenda">
+        <button type="button" class="module-secondary" id="dia-anterior" aria-label="Dia anterior">←</button>
+        <label class="module-field" for="filtro-data">Exibir data
+          <input id="filtro-data" type="date">
+        </label>
+        <button type="button" class="module-secondary" id="proximo-dia" aria-label="Próximo dia">→</button>
+        <button type="button" class="module-secondary" id="ir-para-hoje">Hoje</button>
+      </div>
+      <label class="module-field" id="filtro-medico-wrap" for="filtro-medico">Médico
+        <select id="filtro-medico">
+          <option value="">Todos os médicos</option>
+        </select>
+      </label>
+    </header>
+
+    <div class="module-columns">
+      <section class="module-panel" id="painel-agendamento" aria-labelledby="titulo-agendamento">
+        <h2 id="titulo-agendamento">Novo agendamento</h2>
+        <form class="module-form" id="form-agendamento">
+          <label class="module-field" for="busca-paciente">Paciente *
+            <input id="busca-paciente" autocomplete="off" placeholder="Pesquise por nome ou CPF" required>
+          </label>
+          <input type="hidden" id="pessoa-id">
+          <div class="module-list" id="sugestoes-paciente" role="listbox" aria-label="Resultados de pacientes"></div>
+          <label class="module-field" for="medico">Médico *
+            <select id="medico" required>
+              <option value="">Carregando médicos...</option>
+            </select>
+          </label>
+          <div class="module-fields">
+            <label class="module-field" for="data">Data *
+              <input id="data" type="date" required>
+            </label>
+            <label class="module-field" for="hora">Horário *
+              <input id="hora" type="time" required>
+            </label>
+          </div>
+          <label class="module-field" for="motivo">Motivo da consulta *
+            <textarea id="motivo" maxlength="500" rows="3" required></textarea>
+          </label>
+          <p class="module-message" id="mensagem-form" role="status" aria-live="polite"></p>
+          <button type="submit" id="salvar-agendamento">Agendar consulta</button>
+        </form>
+      </section>
+
+      <section class="module-panel" aria-labelledby="titulo-agenda">
+        <div class="module-heading">
+          <div>
+            <h2 id="titulo-agenda">Agenda do dia</h2>
+            <p class="module-hint" id="resumo-agenda" role="status">Carregando agenda...</p>
+          </div>
+          <button type="button" class="module-secondary" id="atualizar-agenda">Atualizar</button>
+        </div>
+        <div class="agenda-filters">
+          <label class="module-field" for="filtro-status">Status
+            <select id="filtro-status">
+              <option value="">Todos os status</option>
+              <option value="agendada">Agendada</option>
+              <option value="confirmada">Confirmada</option>
+              <option value="cancelada">Cancelada</option>
+              <option value="concluida">Concluída</option>
+            </select>
+          </label>
+          <label class="module-field" for="busca-agenda">Buscar consulta
+            <input id="busca-agenda" type="search" placeholder="Paciente ou motivo">
+          </label>
+        </div>
+        <div class="module-table-wrap">
+          <table class="module-table">
+            <thead>
+              <tr>
+                <th>Horário</th>
+                <th>Paciente</th>
+                <th>Médico</th>
+                <th>Motivo</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="lista-agendamentos">
+              <tr><td colspan="6" class="module-empty">Carregando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script>
+    const sessao = Baymax.iniciar(["atendimento", "medico"]);
+    const form = document.getElementById("form-agendamento");
+    const pessoaId = document.getElementById("pessoa-id");
+    const pacienteBusca = document.getElementById("busca-paciente");
+    const sugestoes = document.getElementById("sugestoes-paciente");
+    const campoMedico = document.getElementById("medico");
+    const filtroMedico = document.getElementById("filtro-medico");
+    const campoData = document.getElementById("data");
+    const filtroData = document.getElementById("filtro-data");
+    const filtroStatus = document.getElementById("filtro-status");
+    const buscaAgenda = document.getElementById("busca-agenda");
+    const corpoAgenda = document.getElementById("lista-agendamentos");
+    const resumoAgenda = document.getElementById("resumo-agenda");
+    const mensagemForm = document.getElementById("mensagem-form");
+    const botaoSalvar = document.getElementById("salvar-agendamento");
+    const podeAgendar = Boolean(sessao && ["admin", "atendimento"].includes(sessao.tipo));
+    let temporizadorBusca;
+    let agendamentosCarregados = [];
+    let requisicaoAgenda = 0;
+
+    if (!podeAgendar) {
+      document.getElementById("painel-agendamento").hidden = true;
+      document.getElementById("filtro-medico-wrap").hidden = true;
+    }
+
+    function hojeLocal() {
+      const agora = new Date();
+      return `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, "0")}-${String(agora.getDate()).padStart(2, "0")}`;
+    }
+
+    function deslocarData(dias) {
+      if (!filtroData.value) {
+        filtroData.value = hojeLocal();
+      }
+      const [ano, mes, dia] = filtroData.value.split("-").map(Number);
+      const data = new Date(Date.UTC(ano, mes - 1, dia));
+      data.setUTCDate(data.getUTCDate() + dias);
+      filtroData.value = data.toISOString().slice(0, 10);
+      carregarAgenda();
+    }
+
+    function mensagem(texto, tipo = "") {
+      mensagemForm.textContent = texto;
+      mensagemForm.className = `module-message${tipo ? ` ${tipo}` : ""}`;
+    }
+
+    function adicionarOpcao(select, valor, rotulo) {
+      const opcao = document.createElement("option");
+      opcao.value = valor;
+      opcao.textContent = rotulo;
+      select.appendChild(opcao);
+    }
+
+    async function carregarMedicos() {
+      const medicos = await Baymax.api("/agenda/medicos");
+      campoMedico.replaceChildren();
+      adicionarOpcao(campoMedico, "", "Selecione um médico");
+      medicos.forEach(medico => adicionarOpcao(campoMedico, medico.usuario, medico.nome));
+      medicos.forEach(medico => adicionarOpcao(filtroMedico, medico.usuario, medico.nome));
+      if (!medicos.length) {
+        campoMedico.replaceChildren();
+        adicionarOpcao(campoMedico, "", "Nenhum médico cadastrado");
+        botaoSalvar.disabled = true;
+      }
+    }
+
+    function renderizarSugestoes(pessoas) {
+      sugestoes.replaceChildren();
+      pessoas.forEach(pessoa => {
+        const opcao = document.createElement("button");
+        opcao.type = "button";
+        opcao.className = "module-record";
+        opcao.setAttribute("role", "option");
+        opcao.append(
+          Object.assign(document.createElement("strong"), { textContent: pessoa.nome }),
+          Object.assign(document.createElement("small"), { textContent: `CPF: ${pessoa.cpf}` })
+        );
+        opcao.addEventListener("click", () => {
+          pessoaId.value = pessoa.id;
+          pacienteBusca.value = `${pessoa.nome} — ${pessoa.cpf}`;
+          sugestoes.replaceChildren();
+        });
+        sugestoes.appendChild(opcao);
+      });
+      if (!pessoas.length) {
+        sugestoes.appendChild(Object.assign(document.createElement("p"), {
+          className: "module-empty",
+          textContent: "Nenhum paciente encontrado. Cadastre-o no módulo Pacientes."
+        }));
+      }
+    }
+
+    async function pesquisarPacientes() {
+      pessoaId.value = "";
+      const termo = pacienteBusca.value.trim();
+      sugestoes.replaceChildren();
+      if (termo.length < 2) return;
+      try {
+        renderizarSugestoes(await Baymax.api(`/pessoas?busca=${encodeURIComponent(termo)}`));
+      } catch (erro) {
+        mensagem(erro.message, "error");
+      }
+    }
+
+    function criarAcao(rotulo, status, agendamento) {
+      const botao = document.createElement("button");
+      botao.type = "button";
+      botao.textContent = rotulo;
+      botao.addEventListener("click", async () => {
+        if (status === "cancelada" && !window.confirm(
+          `Cancelar a consulta de ${agendamento.paciente} em ${agendamento.data} às ${agendamento.hora}?`
+        )) return;
+        botao.disabled = true;
+        try {
+          await Baymax.api(`/agendamentos/${encodeURIComponent(agendamento.id)}`, {
+            method: "PATCH",
+            body: { status }
+          });
+          await carregarAgenda();
+        } catch (erro) {
+          resumoAgenda.textContent = erro.message;
+          botao.disabled = false;
+        }
+      });
+      return botao;
+    }
+
+    function renderizarAgenda() {
+      corpoAgenda.replaceChildren();
+      const termo = buscaAgenda.value.trim().toLocaleLowerCase("pt-BR");
+      const agendamentos = agendamentosCarregados.filter(agendamento =>
+        !termo || `${agendamento.paciente} ${agendamento.motivo}`.toLocaleLowerCase("pt-BR").includes(termo)
+      );
+      resumoAgenda.textContent = termo
+        ? `${agendamentos.length} de ${agendamentosCarregados.length} consulta${agendamentosCarregados.length === 1 ? "" : "s"} nesta data`
+        : `${agendamentos.length} consulta${agendamentos.length === 1 ? "" : "s"} nesta data`;
+      if (!agendamentos.length) {
+        const linha = document.createElement("tr");
+        const celula = document.createElement("td");
+        celula.colSpan = 6;
+        celula.className = "module-empty";
+        celula.textContent = termo
+          ? "Nenhuma consulta corresponde à busca."
+          : "Nenhuma consulta encontrada para os filtros selecionados.";
+        linha.appendChild(celula);
+        corpoAgenda.appendChild(linha);
+        return;
+      }
+
+      const rotulos = {
+        agendada: "Agendada",
+        confirmada: "Confirmada",
+        cancelada: "Cancelada",
+        concluida: "Concluída"
+      };
+      agendamentos.forEach(agendamento => {
+        const linha = document.createElement("tr");
+        [
+          agendamento.hora,
+          agendamento.paciente,
+          agendamento.medicoNome,
+          agendamento.motivo,
+          rotulos[agendamento.status] || agendamento.status
+        ].forEach(valor => {
+          const celula = document.createElement("td");
+          celula.textContent = valor || "—";
+          linha.appendChild(celula);
+        });
+
+        const celulaAcoes = document.createElement("td");
+        const acoes = document.createElement("div");
+        acoes.className = "module-actions";
+        if (agendamento.status === "agendada") {
+          acoes.appendChild(criarAcao("Confirmar", "confirmada", agendamento));
+          if (podeAgendar) acoes.appendChild(criarAcao("Cancelar", "cancelada", agendamento));
+        } else if (agendamento.status === "confirmada") {
+          if (sessao && sessao.tipo === "medico") {
+            acoes.appendChild(criarAcao("Concluir", "concluida", agendamento));
+          }
+          if (podeAgendar) acoes.appendChild(criarAcao("Cancelar", "cancelada", agendamento));
+        }
+        if (!acoes.childElementCount) acoes.textContent = "—";
+        celulaAcoes.appendChild(acoes);
+        linha.appendChild(celulaAcoes);
+        corpoAgenda.appendChild(linha);
+      });
+    }
+
+    async function carregarAgenda() {
+      const requisicaoAtual = ++requisicaoAgenda;
+      corpoAgenda.replaceChildren(Object.assign(document.createElement("tr"), {
+        innerHTML: '<td colspan="6" class="module-empty">Carregando agenda...</td>'
+      }));
+      try {
+        const consulta = new URLSearchParams({ data: filtroData.value });
+        if (filtroMedico.value) consulta.set("medico", filtroMedico.value);
+        if (filtroStatus.value) consulta.set("status", filtroStatus.value);
+        const agendamentos = await Baymax.api(`/agendamentos?${consulta.toString()}`);
+        if (requisicaoAtual !== requisicaoAgenda) return;
+        agendamentosCarregados = agendamentos;
+        renderizarAgenda();
+      } catch (erro) {
+        if (requisicaoAtual !== requisicaoAgenda) return;
+        resumoAgenda.textContent = erro.message;
+        corpoAgenda.replaceChildren();
+      }
+    }
+
+    pacienteBusca.addEventListener("input", () => {
+      clearTimeout(temporizadorBusca);
+      temporizadorBusca = setTimeout(pesquisarPacientes, 250);
+    });
+    filtroData.addEventListener("change", carregarAgenda);
+    filtroMedico.addEventListener("change", carregarAgenda);
+    filtroStatus.addEventListener("change", carregarAgenda);
+    buscaAgenda.addEventListener("input", renderizarAgenda);
+    document.getElementById("dia-anterior").addEventListener("click", () => deslocarData(-1));
+    document.getElementById("proximo-dia").addEventListener("click", () => deslocarData(1));
+    document.getElementById("ir-para-hoje").addEventListener("click", () => {
+      filtroData.value = hojeLocal();
+      carregarAgenda();
+    });
+    document.getElementById("atualizar-agenda").addEventListener("click", carregarAgenda);
+
+    form.addEventListener("submit", async evento => {
+      evento.preventDefault();
+      if (!pessoaId.value) {
+        mensagem("Selecione um paciente nos resultados da pesquisa.", "error");
+        pacienteBusca.focus();
+        return;
+      }
+      if (botaoSalvar.disabled) return;
+
+      botaoSalvar.disabled = true;
+      mensagem("");
+      try {
+        await Baymax.api("/agendamentos", {
+          method: "POST",
+          body: {
+            pessoaId: Number(pessoaId.value),
+            medico: campoMedico.value,
+            data: campoData.value,
+            hora: document.getElementById("hora").value,
+            motivo: document.getElementById("motivo").value.trim()
+          }
+        });
+        mensagem("Consulta agendada.", "success");
+        filtroData.value = campoData.value;
+        form.reset();
+        pessoaId.value = "";
+        pacienteBusca.value = "";
+        sugestoes.replaceChildren();
+        campoData.value = hojeLocal();
+        await carregarAgenda();
+      } catch (erro) {
+        mensagem(erro.message, "error");
+      } finally {
+        botaoSalvar.disabled = false;
+      }
+    });
+
+    filtroData.value = hojeLocal();
+    campoData.value = hojeLocal();
+    campoData.min = hojeLocal();
+    Promise.all([carregarMedicos(), carregarAgenda()]).catch(erro => {
+      resumoAgenda.textContent = erro.message;
+      mensagem(erro.message, "error");
+    });
+  </script>
+</body>
+</html>

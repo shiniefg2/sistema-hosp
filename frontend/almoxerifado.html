@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Almoxarifado - Baymax</title>
+
+  <style>
+    body.page-almox {
+      min-height: 100vh;
+      padding: 0 var(--page-pad) 32px;
+      background: var(--app-background);
+    }
+
+    .almox {
+      display: grid;
+      gap: 20px;
+      width: min(1300px, 100%);
+      margin: 0 auto;
+    }
+
+    .almox-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .almox-heading h1 { font-size: 22px; font-weight: 650; }
+    .almox-heading p { margin-top: 5px; color: var(--app-muted); font-size: 12px; }
+
+    .almox-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .almox-alerta {
+      padding: 12px 16px;
+      border: 1px solid #f3d19c;
+      border-radius: 8px;
+      background: #fff6e5;
+      color: #8a5300;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .almox-alerta.critico { border-color: #efb3b3; background: #fdeeee; color: #9b2323; }
+    .almox-alerta[hidden] { display: none; }
+
+    .almox-stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .almox-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 16px;
+      border: 1px solid var(--app-border);
+      border-left-width: 4px;
+      border-radius: var(--app-radius);
+      background: var(--app-surface);
+      box-shadow: var(--app-shadow);
+    }
+
+    .almox-stat span { color: var(--app-muted); font-size: 12px; }
+    .almox-stat strong { font-size: 28px; line-height: 1; }
+    .almox-stat.total { border-left-color: var(--app-primary); }
+    .almox-stat.ok { border-left-color: #2e9d5b; }
+    .almox-stat.baixo { border-left-color: #e6a12b; }
+    .almox-stat.zerado { border-left-color: #c84b4b; }
+
+    .almox-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.7fr) minmax(300px, 0.9fr);
+      gap: 20px;
+      align-items: start;
+    }
+
+    .almox-panel {
+      min-width: 0;
+      padding: 22px;
+      border: 1px solid var(--app-border);
+      border-radius: var(--app-radius);
+      background: var(--app-surface);
+      box-shadow: var(--app-shadow);
+    }
+
+    .almox-panel h2 {
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e7ecef;
+      font-size: 16px;
+      font-weight: 650;
+    }
+
+    .almox-filtros { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+    .almox-filtros input { flex: 1 1 200px; }
+    .almox-filtros select { flex: 0 0 auto; }
+
+    .tabela-rolagem { overflow-x: auto; }
+
+    .almox table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+    .almox th {
+      padding: 9px 10px;
+      border-bottom: 2px solid #e7ecef;
+      color: var(--app-muted);
+      font-size: 11px;
+      font-weight: 650;
+      text-align: left;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+
+    .almox td { padding: 10px; border-bottom: 1px solid #eef2f4; vertical-align: middle; }
+    .almox tr:last-child td { border-bottom: none; }
+    .almox td.num, .almox th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .almox td.nome { font-weight: 600; overflow-wrap: anywhere; }
+    .almox td.obs { color: var(--app-muted); overflow-wrap: anywhere; min-width: 140px; }
+
+    .selo {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .selo.ok, .selo.entrada { background: #e6f4ea; color: #18733b; }
+    .selo.baixo { background: #fff3e0; color: #b36b00; }
+    .selo.zerado, .selo.saida { background: #fdeaea; color: #c62828; }
+    .selo.ajuste { background: #e4f1fa; color: #0b5d86; }
+
+    .linha-acoes { display: flex; gap: 6px; justify-content: flex-end; }
+    .linha-acoes button { min-height: 32px; padding: 6px 10px; font-size: 12px; }
+    .btn-entrada { background: #2e9d5b; }
+    .btn-entrada:hover:not(:disabled) { background: #247d49; }
+    .btn-saida { background: #c84b4b; }
+    .btn-saida:hover:not(:disabled) { background: #a63a3a; }
+
+    .almox-form { display: grid; gap: 14px; }
+    .almox-form label, .almox-form legend { display: block; margin-bottom: 6px; }
+    .almox-form select, .almox-form input[type="number"], .almox-form input[type="text"] { width: 100%; }
+    .almox-form fieldset { border: none; }
+
+    .almox-tipo { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .almox-tipo label { position: relative; margin: 0; }
+    .almox-tipo input { position: absolute; opacity: 0; }
+
+    .almox-tipo span {
+      display: block;
+      padding: 10px;
+      border: 1px solid var(--app-border);
+      border-radius: 7px;
+      background: #fff;
+      font-size: 13px;
+      font-weight: 650;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    .almox-tipo input[value="entrada"]:checked + span { border-color: #2e9d5b; background: #e6f4ea; color: #18733b; }
+    .almox-tipo input[value="saida"]:checked + span { border-color: #c84b4b; background: #fdeaea; color: #c62828; }
+    .almox-tipo input:focus-visible + span { outline: 3px solid rgba(8, 126, 172, 0.3); outline-offset: 2px; }
+
+    .previa {
+      padding: 10px 12px;
+      border-radius: 7px;
+      background: #f4f9fb;
+      color: var(--app-ink);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .previa:empty { display: none; }
+
+    #mensagem { font-size: 13px; line-height: 1.5; }
+    #mensagem:empty { display: none; }
+    #mensagem.sucesso { color: #18733b; }
+    #mensagem.erro { color: #c62828; }
+
+    .vazio { padding: 20px; color: var(--app-muted); font-size: 13px; text-align: center; }
+
+    @media (max-width: 980px) {
+      .almox-grid { grid-template-columns: 1fr; }
+      .almox-form-painel { order: -1; }
+    }
+
+    @media (max-width: 640px) {
+      .almox-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .almox-panel { padding: 16px; }
+    }
+  </style>
+  <link rel="stylesheet" href="css/system.css">
+</head>
+
+<body class="page-almox">
+  <main class="almox">
+    <div class="almox-heading">
+      <div>
+        <h1>Almoxarifado</h1>
+        <p id="atualizacao" role="status" aria-live="polite">Carregando estoque...</p>
+      </div>
+      <div class="almox-acoes">
+        <a class="btn-link" id="link-medicacoes" href="medicacoes.html" hidden>← Painel de medicações</a>
+        <button type="button" id="btn-atualizar">Atualizar agora</button>
+      </div>
+    </div>
+
+    <div id="alerta-estoque" class="almox-alerta" role="alert" hidden>
+      <strong>⚠️ Atenção:</strong> <span id="alerta-texto"></span>
+    </div>
+
+    <section class="almox-stats" aria-label="Resumo do estoque">
+      <article class="almox-stat total"><span>Tipos cadastrados</span><strong id="stat-itens">—</strong></article>
+      <article class="almox-stat ok"><span>Estoque normal</span><strong id="stat-ok">—</strong></article>
+      <article class="almox-stat baixo"><span id="rotulo-baixo">Estoque baixo</span><strong id="stat-baixo">—</strong></article>
+      <article class="almox-stat zerado"><span>Zerado / esgotado</span><strong id="stat-zerado">—</strong></article>
+    </section>
+
+    <div class="almox-grid">
+      <section class="almox-panel" aria-labelledby="titulo-estoque">
+        <h2 id="titulo-estoque">Estoque atual</h2>
+
+        <div class="almox-filtros">
+          <input type="search" id="busca" placeholder="Buscar medicação..." autocomplete="off" aria-label="Buscar medicação">
+          <select id="filtro-situacao" aria-label="Filtrar por situação">
+            <option value="">Todas as situações</option>
+            <option value="ok">Normal</option>
+            <option value="baixo">Estoque baixo</option>
+            <option value="zerado">Esgotado</option>
+          </select>
+        </div>
+
+        <div class="tabela-rolagem">
+          <table>
+            <thead>
+              <tr>
+                <th>Medicação</th>
+                <th class="num">Quantidade</th>
+                <th>Situação</th>
+                <th><span class="sr-only" style="position:absolute;left:-9999px">Ações</span></th>
+              </tr>
+            </thead>
+            <tbody id="tabela-estoque">
+              <tr><td colspan="4" class="vazio">Carregando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="almox-panel almox-form-painel" aria-labelledby="titulo-form">
+        <h2 id="titulo-form">Registrar movimentação</h2>
+
+        <form id="form-mov" class="almox-form" novalidate>
+          <div>
+            <label for="medicacao">Medicação</label>
+            <select id="medicacao" required>
+              <option value="">Selecione...</option>
+            </select>
+          </div>
+
+          <fieldset>
+            <legend>Tipo</legend>
+            <div class="almox-tipo">
+              <label><input type="radio" name="tipo" value="entrada" checked><span>⬇ Entrada</span></label>
+              <label><input type="radio" name="tipo" value="saida"><span>⬆ Saída</span></label>
+            </div>
+          </fieldset>
+
+          <div>
+            <label for="quantidade">Quantidade</label>
+            <input id="quantidade" type="number" min="1" step="1" inputmode="numeric" placeholder="Ex.: 20" required>
+          </div>
+
+          <div>
+            <label for="observacao">Observação (nota fiscal, lote, motivo...)</label>
+            <input id="observacao" type="text" maxlength="200" autocomplete="off">
+          </div>
+
+          <p id="previa" class="previa"></p>
+
+          <button type="submit" id="btn-registrar">Registrar movimentação</button>
+          <p id="mensagem" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+    </div>
+
+    <section class="almox-panel" aria-labelledby="titulo-hist">
+      <h2 id="titulo-hist">Últimas movimentações</h2>
+      <div class="tabela-rolagem">
+        <table>
+          <thead>
+            <tr>
+              <th>Data/hora</th>
+              <th>Medicação</th>
+              <th>Tipo</th>
+              <th class="num">Qtd.</th>
+              <th class="num">Saldo</th>
+              <th>Responsável</th>
+              <th>Observação</th>
+            </tr>
+          </thead>
+          <tbody id="tabela-hist">
+            <tr><td colspan="7" class="vazio">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script>
+    const sessao = Baymax.iniciar(["almoxarifado", "medicacao"]);
+
+    const LIMITE_BAIXO = Baymax.ESTOQUE_BAIXO;
+    const $ = id => document.getElementById(id);
+
+    let medicamentos = [];
+    let movimentos = [];
+    let carregando = false;
+
+    function situacao(qtd) {
+      if (qtd <= 0) return { chave: "zerado", rotulo: "Esgotado" };
+      if (qtd <= LIMITE_BAIXO) return { chave: "baixo", rotulo: "Estoque baixo" };
+      return { chave: "ok", rotulo: "Normal" };
+    }
+
+    function celula(conteudo, classe) {
+      const td = document.createElement("td");
+      if (classe) td.className = classe;
+      if (conteudo instanceof Node) td.appendChild(conteudo);
+      else td.textContent = conteudo;
+      return td;
+    }
+
+    function selo(chave, rotulo) {
+      const s = document.createElement("span");
+      s.className = "selo " + chave;
+      s.textContent = rotulo;
+      return s;
+    }
+
+    function linhaVazia(tbody, colunas, mensagem) {
+      const tr = document.createElement("tr");
+      const td = celula(mensagem, "vazio");
+      td.colSpan = colunas;
+      tr.appendChild(td);
+      tbody.replaceChildren(tr);
+    }
+
+    function mostrarMensagem(texto, erro = false) {
+      const el = $("mensagem");
+      el.textContent = texto;
+      el.className = texto ? (erro ? "erro" : "sucesso") : "";
+    }
+
+    // ---------- Resumo e alerta ----------
+
+    function renderResumo() {
+      const zerados = medicamentos.filter(m => m.quantidade <= 0);
+      const baixos = medicamentos.filter(m => m.quantidade > 0 && m.quantidade <= LIMITE_BAIXO);
+
+      $("rotulo-baixo").textContent = `Estoque baixo (≤ ${LIMITE_BAIXO})`;
+      $("stat-itens").textContent = medicamentos.length;
+      $("stat-ok").textContent = medicamentos.length - zerados.length - baixos.length;
+      $("stat-baixo").textContent = baixos.length;
+      $("stat-zerado").textContent = zerados.length;
+
+      const partes = [];
+      if (zerados.length) partes.push("Esgotado: " + zerados.map(m => m.nome).join(", ") + ".");
+      if (baixos.length) partes.push("Estoque baixo: " + baixos.map(m => `${m.nome} (${m.quantidade})`).join(", ") + ".");
+
+      $("alerta-estoque").hidden = partes.length === 0;
+      $("alerta-estoque").classList.toggle("critico", zerados.length > 0);
+      $("alerta-texto").textContent = partes.join(" ");
+    }
+
+    // ---------- Tabela de estoque ----------
+
+    function renderTabela() {
+      const busca = $("busca").value.trim().toLowerCase();
+      const filtro = $("filtro-situacao").value;
+      const tbody = $("tabela-estoque");
+
+      const lista = medicamentos
+        .filter(m => m.nome.toLowerCase().includes(busca))
+        .filter(m => !filtro || situacao(m.quantidade).chave === filtro)
+        .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+
+      if (!lista.length) {
+        linhaVazia(tbody, 4, medicamentos.length
+          ? "Nenhuma medicação encontrada com esse filtro."
+          : "Nenhuma medicação cadastrada. Cadastre no painel de medicações.");
+        return;
+      }
+
+      tbody.replaceChildren(...lista.map(m => {
+        const sit = situacao(m.quantidade);
+        const tr = document.createElement("tr");
+
+        const acoes = document.createElement("div");
+        acoes.className = "linha-acoes";
+
+        const entrada = document.createElement("button");
+        entrada.type = "button";
+        entrada.className = "btn-entrada";
+        entrada.textContent = "Entrada";
+        entrada.addEventListener("click", () => preparar(m.id, "entrada"));
+
+        const saida = document.createElement("button");
+        saida.type = "button";
+        saida.className = "btn-saida";
+        saida.textContent = "Saída";
+        saida.disabled = m.quantidade <= 0;
+        saida.addEventListener("click", () => preparar(m.id, "saida"));
+
+        acoes.append(entrada, saida);
+
+        tr.append(
+          celula(m.nome, "nome"),
+          celula(String(m.quantidade), "num"),
+          celula(selo(sit.chave, sit.rotulo)),
+          celula(acoes)
+        );
+        return tr;
+      }));
+    }
+
+    // ---------- Formulário ----------
+
+    function renderOpcoes() {
+      const selecionada = $("medicacao").value;
+      const select = $("medicacao");
+
+      select.replaceChildren(new Option("Selecione...", ""));
+
+      [...medicamentos]
+        .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
+        .forEach(m => select.appendChild(new Option(`${m.nome} (${m.quantidade} em estoque)`, m.id)));
+
+      if (medicamentos.some(m => String(m.id) === selecionada)) select.value = selecionada;
+      atualizarPrevia();
+    }
+
+    function tipoSelecionado() {
+      return document.querySelector('input[name="tipo"]:checked').value;
+    }
+
+    function atualizarPrevia() {
+      const item = medicamentos.find(m => String(m.id) === $("medicacao").value);
+      const qtd = Number($("quantidade").value);
+      const previa = $("previa");
+
+      if (!item) {
+        previa.textContent = "";
+        return;
+      }
+
+      if (!Number.isInteger(qtd) || qtd < 1) {
+        previa.textContent = `Saldo atual de ${item.nome}: ${item.quantidade}.`;
+        return;
+      }
+
+      const novo = tipoSelecionado() === "entrada" ? item.quantidade + qtd : item.quantidade - qtd;
+
+      previa.textContent = novo < 0
+        ? `Saldo insuficiente: há apenas ${item.quantidade} unidade(s) de ${item.nome}.`
+        : `Saldo: ${item.quantidade} → ${novo}`;
+    }
+
+    // Botões "Entrada"/"Saída" da tabela preenchem o formulário
+    function preparar(id, tipo) {
+      $("medicacao").value = String(id);
+      document.querySelector(`input[name="tipo"][value="${tipo}"]`).checked = true;
+      mostrarMensagem("");
+      atualizarPrevia();
+      $("quantidade").focus();
+      $("form-mov").scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    $("form-mov").addEventListener("submit", async evento => {
+      evento.preventDefault();
+
+      const medicacaoId = Number($("medicacao").value);
+      const quantidade = Number($("quantidade").value);
+      const tipo = tipoSelecionado();
+
+      if (!medicacaoId) return mostrarMensagem("Selecione a medicação.", true);
+
+      if (!Number.isInteger(quantidade) || quantidade < 1) {
+        return mostrarMensagem("Informe uma quantidade inteira maior que zero.", true);
+      }
+
+      const botao = $("btn-registrar");
+      botao.disabled = true;
+      mostrarMensagem("");
+
+      try {
+        const dados = await Baymax.api("/almoxarifado/movimentar", {
+          method: "POST",
+          body: { medicacaoId, tipo, quantidade, observacao: $("observacao").value }
+        });
+
+        const sinal = tipo === "entrada" ? "+" : "−";
+        mostrarMensagem(
+          `${tipo === "entrada" ? "Entrada" : "Saída"} registrada: ${sinal}${quantidade} ${dados.medicacao.nome} (saldo: ${dados.medicacao.quantidade}).`
+        );
+
+        $("quantidade").value = "";
+        $("observacao").value = "";
+        await carregar();
+        $("quantidade").focus();
+      } catch (erro) {
+        mostrarMensagem(erro.message, true);
+      } finally {
+        botao.disabled = false;
+      }
+    });
+
+    // ---------- Histórico ----------
+
+    const ROTULO_TIPO = { entrada: "Entrada", saida: "Saída", ajuste: "Ajuste" };
+
+    function renderHistorico() {
+      const tbody = $("tabela-hist");
+
+      if (!movimentos.length) {
+        linhaVazia(tbody, 7, "Nenhuma movimentação registrada ainda.");
+        return;
+      }
+
+      tbody.replaceChildren(...movimentos.map(mov => {
+        const tr = document.createElement("tr");
+        const sinal = mov.tipo === "entrada" ? "+" : mov.tipo === "saida" ? "−" : "±";
+
+        tr.append(
+          celula(Baymax.dataHora(mov.createdAt)),
+          celula(mov.medicacao, "nome"),
+          celula(selo(mov.tipo, ROTULO_TIPO[mov.tipo] || mov.tipo)),
+          celula(`${sinal}${mov.quantidade}`, "num"),
+          celula(`${mov.saldoAnterior} → ${mov.saldoAtual}`, "num"),
+          celula(mov.funcionario || "—"),
+          celula(mov.observacao || "—", "obs")
+        );
+        return tr;
+      }));
+    }
+
+    // ---------- Carregamento ----------
+
+    async function carregar() {
+      if (carregando) return;
+      carregando = true;
+
+      try {
+        const [lista, historico] = await Promise.all([
+          Baymax.api("/lista-medicacoes"),
+          Baymax.api("/almoxarifado/movimentacoes?limite=40")
+        ]);
+
+        medicamentos = Array.isArray(lista) ? lista : [];
+        movimentos = Array.isArray(historico) ? historico : [];
+
+        renderResumo();
+        renderTabela();
+        renderOpcoes();
+        renderHistorico();
+
+        $("atualizacao").textContent =
+          "Atualizado às " + new Intl.DateTimeFormat("pt-BR", { timeStyle: "medium" }).format(new Date()) +
+          " · atualização automática a cada 15 segundos";
+      } catch (erro) {
+        console.error("Erro ao carregar almoxarifado:", erro);
+        $("atualizacao").textContent = erro.message;
+      } finally {
+        carregando = false;
+      }
+    }
+
+    if (sessao) {
+      // o link de volta só aparece para quem tem acesso ao painel de medicações
+      $("link-medicacoes").hidden = !["medicacao", "admin"].includes(sessao.tipo);
+
+      $("busca").addEventListener("input", renderTabela);
+      $("filtro-situacao").addEventListener("change", renderTabela);
+      $("medicacao").addEventListener("change", atualizarPrevia);
+      $("quantidade").addEventListener("input", atualizarPrevia);
+      document.querySelectorAll('input[name="tipo"]').forEach(r => r.addEventListener("change", atualizarPrevia));
+      $("btn-atualizar").addEventListener("click", carregar);
+
+      carregar().then(() => {
+        // vindo do painel de medicações: já deixa o item escolhido
+        const id = Number(new URLSearchParams(location.search).get("med"));
+        if (id && medicamentos.some(m => m.id === id)) preparar(id, "entrada");
+      });
+      setInterval(() => { if (!document.hidden) carregar(); }, 15000);
+    }
+  </script>
+</body>
+</html>

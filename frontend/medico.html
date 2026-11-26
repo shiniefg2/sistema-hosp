@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel Médico - Baymax</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background-color: #f0f4f8;
+      color: #334155;
+    }
+
+    .container {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 20px;
+      max-width: 1200px;
+      margin: 30px auto;
+      padding: 0 20px;
+    }
+
+    .card {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    }
+
+    .card h2 {
+      color: #0284c7;
+      font-size: 18px;
+      margin-bottom: 16px;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 8px;
+    }
+
+    .pacientes-list {
+      list-style: none;
+    }
+
+    .paciente-item {
+      padding: 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .paciente-item:hover {
+      border-color: #0284c7;
+      background-color: #f0f9ff;
+    }
+
+    .paciente-item.selecionado {
+      border-color: #0284c7;
+      background-color: #e0f2fe;
+    }
+
+    .prescricao-extra {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #f8fbfc;
+    }
+
+    .prescricao-extra[hidden] { display: none; }
+    .prescricao-extra label { display: block; margin-bottom: 4px; font-size: 12px; }
+
+    .link-prontuario { margin-left: 8px; font-size: 12px; font-weight: 600; }
+
+    #mensagem-consulta.erro { color: #dc2626; }
+    #mensagem-consulta.sucesso { color: #16a34a; }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #475569;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      background-color: white;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      border-color: #0284c7;
+      box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+    }
+
+    button[type="submit"] {
+      background-color: #0284c7;
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    button[type="submit"]:hover {
+      background-color: #0369a1;
+    }
+  </style>
+  <link rel="stylesheet" href="css/system.css">
+</head>
+
+<body class="page-medico">
+
+  <main class="container">
+    <div class="card">
+      <h2>Aguardando Atendimento</h2>
+      <p id="status-fila" role="status" aria-live="polite">Carregando fila...</p>
+      <ul id="listaFila" class="pacientes-list">
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>Consulta Médica</h2>
+      <p id="mensagem-consulta" role="status" aria-live="polite"></p>
+      <form id="form-consulta">
+        <input type="hidden" id="pacienteId">
+
+        <label for="paciente">Nome do Paciente:</label>
+        <input type="text" id="paciente" placeholder="Selecione na lista ao lado" readonly required>
+
+        <div id="alerta-alergia" class="aviso-alergia" role="alert" hidden></div>
+
+        <label for="diagnostico">Diagnóstico / Anamnese:</label>
+        <textarea id="diagnostico" placeholder="Descreva os sintomas e o diagnóstico..." rows="3" required></textarea>
+
+        <label for="medicacao">Prescrição de Medicamentos:</label>
+        <select id="medicacao">
+          <option value="">Nenhuma medicação necessária</option>
+        </select>
+
+        <div id="prescricao-extra" class="prescricao-extra" hidden>
+          <div>
+            <label for="dose">Dose</label>
+            <input type="text" id="dose" maxlength="60" placeholder="Ex.: 500 mg" autocomplete="off">
+          </div>
+          <div>
+            <label for="via">Via de administração</label>
+            <select id="via">
+              <option value="">Não informada</option>
+              <option>Oral</option>
+              <option>Intravenosa</option>
+              <option>Intramuscular</option>
+              <option>Subcutânea</option>
+              <option>Tópica</option>
+              <option>Inalatória</option>
+              <option>Sublingual</option>
+            </select>
+          </div>
+          <div>
+            <label for="frequencia">Frequência</label>
+            <input type="text" id="frequencia" maxlength="60" placeholder="Ex.: 8/8h ou dose única" autocomplete="off">
+          </div>
+          <div>
+            <label for="qtdMed">Quantidade (unidades)</label>
+            <input type="number" id="qtdMed" min="1" max="100" step="1" value="1">
+          </div>
+        </div>
+
+        <label for="obs">Observações / Orientações:</label>
+        <input type="text" id="obs" placeholder="Ex: Repouso, beber bastante água...">
+
+        <button type="submit" id="btn-finalizar" disabled>Selecione um paciente</button>
+      </form>
+    </div>
+  </main>
+
+  <dialog id="modal-paciente-medico" class="patient-modal">
+    <div class="patient-modal-content">
+      <div class="patient-modal-heading">
+        <div>
+          <span class="admin-eyebrow">FICHA DO PACIENTE</span>
+          <h2 id="detalhe-nome-medico">Informações do paciente</h2>
+        </div>
+        <button type="button" class="patient-modal-close" id="fechar-detalhe-medico" aria-label="Fechar">×</button>
+      </div>
+      <div id="detalhe-dados-medico" class="patient-detail-grid"></div>
+    </div>
+  </dialog>
+
+  <script src="js/app.js"></script>
+  <script>
+    const listaFila = document.getElementById("listaFila");
+    const statusFila = document.getElementById("status-fila");
+    const formularioConsulta = document.getElementById("form-consulta");
+    const campoPacienteId = document.getElementById("pacienteId");
+    const campoPaciente = document.getElementById("paciente");
+    const campoDiagnostico = document.getElementById("diagnostico");
+    const campoMedicacao = document.getElementById("medicacao");
+    const campoObservacoes = document.getElementById("obs");
+    const botaoFinalizar = document.getElementById("btn-finalizar");
+    const mensagemConsulta = document.getElementById("mensagem-consulta");
+    const modalPaciente = document.getElementById("modal-paciente-medico");
+    const alertaAlergia = document.getElementById("alerta-alergia");
+    const blocoPrescricao = document.getElementById("prescricao-extra");
+    let pacienteSelecionadoId = null;
+    let carregandoFila = false;
+    let assinaturaFila = null;
+
+    function dataHora(valor) {
+      if (!valor) return "Horário não informado";
+      const data = new Date(valor);
+      if (Number.isNaN(data.getTime())) return "Horário não informado";
+      return new Intl.DateTimeFormat("pt-BR", {
+        dateStyle: "short",
+        timeStyle: "short"
+      }).format(data);
+    }
+
+    function horaAtual() {
+      return new Intl.DateTimeFormat("pt-BR", { timeStyle: "short" }).format(new Date());
+    }
+
+    async function lerResposta(resposta, operacao) {
+      const texto = await resposta.text();
+      let dados;
+
+      try {
+        dados = texto ? JSON.parse(texto) : {};
+      } catch (error) {
+        throw new Error(`O servidor retornou uma resposta inválida ao ${operacao}.`);
+      }
+
+      if (!resposta.ok) {
+        const erro = new Error(dados.erro || `Não foi possível ${operacao}.`);
+        erro.dados = dados;
+        throw erro;
+      }
+
+      return dados;
+    }
+
+    function mostrarMensagem(texto, tipo = "") {
+      mensagemConsulta.textContent = texto;
+      mensagemConsulta.className = tipo;
+    }
+
+    function atualizarBotaoFinalizar() {
+      const pacienteSelecionado = Boolean(campoPacienteId.value);
+      botaoFinalizar.disabled = !pacienteSelecionado;
+      botaoFinalizar.textContent = pacienteSelecionado
+        ? "Finalizar Consulta"
+        : "Selecione um paciente";
+    }
+
+    async function carregarMedicacoes() {
+      try {
+        const resposta = await Baymax.fetch("/lista-medicacoes", {
+          headers: { "Accept": "application/json" }
+        });
+        const medicacoes = await lerResposta(resposta, "carregar as medicações");
+
+        if (!Array.isArray(medicacoes)) {
+          throw new Error("A lista de medicações recebida do servidor é inválida.");
+        }
+
+        campoMedicacao.replaceChildren(
+          new Option("Nenhuma medicação necessária", "")
+        );
+
+        medicacoes.forEach(item => {
+          const nome = typeof item === "string" ? item : item && item.nome;
+          if (typeof nome !== "string" || !nome.trim()) return;
+
+          const quantidade = item && typeof item === "object"
+            ? Number(item.quantidade)
+            : null;
+          const opcao = new Option(nome.trim(), nome.trim());
+
+          if (quantidade !== null && Number.isFinite(quantidade)) {
+            opcao.textContent = quantidade > 0
+              ? `${nome.trim()} (${quantidade} em estoque)`
+              : `${nome.trim()} (indisponível)`;
+            opcao.disabled = quantidade <= 0;
+          }
+
+          campoMedicacao.appendChild(opcao);
+        });
+      } catch (error) {
+        console.error("Erro ao carregar medicações:", error);
+        mostrarMensagem(error.message, "erro");
+      }
+    }
+
+    async function carregarFila(silencioso = false) {
+      if (carregandoFila) return;
+      carregandoFila = true;
+      if (!silencioso) statusFila.textContent = "Carregando fila...";
+
+      try {
+        const resposta = await Baymax.fetch("/pacientes/medico", {
+          headers: { "Accept": "application/json" }
+        });
+        const pacientes = await lerResposta(resposta, "carregar os pacientes");
+
+        if (!Array.isArray(pacientes)) {
+          throw new Error("A fila recebida do servidor está em formato inválido.");
+        }
+
+        statusFila.textContent = pacientes.length
+          ? `${pacientes.length} paciente${pacientes.length === 1 ? "" : "s"} aguardando · atualizado às ${horaAtual()}`
+          : `Nenhum paciente aguardando no momento · atualizado às ${horaAtual()}`;
+
+        // Verifica se o paciente selecionado ainda está na fila
+        const pacienteContinuaNaFila = pacientes.some(
+          paciente => Number(paciente.id) === Number(pacienteSelecionadoId)
+        );
+        if (pacienteSelecionadoId !== null && !pacienteContinuaNaFila) {
+          limparPacienteSelecionado();
+          mostrarMensagem("O paciente selecionado não está mais na fila. Selecione outro paciente.", "erro");
+        }
+
+        // CORREÇÃO: a assinatura agora inclui o paciente selecionado,
+        // assim o destaque é redesenhado quando a seleção muda.
+        const assinaturaAtual = JSON.stringify([pacienteSelecionadoId, Math.floor(Date.now() / 60000), pacientes]);
+        if (assinaturaAtual === assinaturaFila) return;
+        assinaturaFila = assinaturaAtual;
+        listaFila.replaceChildren();
+
+        pacientes.forEach(paciente => {
+          const li = document.createElement("li");
+          li.className = "paciente-item";
+          if (Number(paciente.id) === Number(pacienteSelecionadoId)) {
+            li.classList.add("selecionado");
+          }
+
+          const informacoes = document.createElement("span");
+          informacoes.className = "doctor-patient-info";
+          const nome = document.createElement("strong");
+          nome.textContent = paciente.nome || "Paciente sem nome";
+          const cpf = document.createElement("small");
+          cpf.textContent = `CPF: ${paciente.cpf || "Não informado"}`;
+          const horario = document.createElement("small");
+          horario.textContent = `Entrada: ${dataHora(paciente.createdAt)}`;
+          const horarioTriagem = document.createElement("small");
+          horarioTriagem.textContent = paciente.triagem && paciente.triagem.createdAt
+            ? `Triagem: ${dataHora(paciente.triagem.createdAt)}`
+            : "";
+          const nivel = paciente.risco || (paciente.triagem && paciente.triagem.risco) || "";
+          const linhaRisco = document.createElement("small");
+          linhaRisco.appendChild(Baymax.badgeRisco(nivel));
+
+          const esp = Baymax.espera((paciente.triagem && paciente.triagem.createdAt) || paciente.createdAt, nivel);
+          const textoEspera = document.createElement("span");
+          textoEspera.className = "espera" + (esp.estourou ? " estourou" : "");
+          textoEspera.textContent = ` Aguardando há ${esp.texto}` + (esp.estourou ? " · acima do tempo recomendado" : "");
+          linhaRisco.appendChild(textoEspera);
+
+          if (paciente.alergias && paciente.alergias.length) {
+            const alerta = document.createElement("span");
+            alerta.className = "espera estourou";
+            alerta.textContent = ` · ⚠ Alergia: ${paciente.alergias.join(", ")}`;
+            linhaRisco.appendChild(alerta);
+          }
+
+          informacoes.append(nome, cpf, horario);
+          if (horarioTriagem.textContent) informacoes.appendChild(horarioTriagem);
+          informacoes.appendChild(linhaRisco);
+
+          const acoes = document.createElement("span");
+          acoes.className = "doctor-patient-actions";
+
+          const botaoDetalhes = document.createElement("button");
+          botaoDetalhes.type = "button";
+          botaoDetalhes.className = "doctor-details-button";
+          botaoDetalhes.textContent = "Ver informações";
+          botaoDetalhes.addEventListener("click", () => abrirInformacoesPaciente(paciente));
+
+          const botaoChamar = document.createElement("button");
+          botaoChamar.type = "button";
+          botaoChamar.className = "doctor-call-button";
+          botaoChamar.textContent = "Chamar na TV";
+          botaoChamar.addEventListener("click", () => chamarPacienteNaTV(paciente));
+
+          const botaoSelecionar = document.createElement("button");
+          botaoSelecionar.type = "button";
+          botaoSelecionar.className = "btn-selecionar-paciente";
+          botaoSelecionar.textContent = "Atender";
+          botaoSelecionar.setAttribute(
+            "aria-pressed",
+            String(Number(paciente.id) === Number(pacienteSelecionadoId))
+          );
+          botaoSelecionar.addEventListener("click", () => selecionarPaciente(paciente));
+
+          const botaoProntuario = document.createElement("button");
+          botaoProntuario.type = "button";
+          botaoProntuario.className = "doctor-details-button";
+          botaoProntuario.textContent = "Prontuário";
+          botaoProntuario.addEventListener("click", () => {
+            window.location.href = `prontuario.html?cpf=${encodeURIComponent(paciente.cpf || "")}`;
+          });
+
+          acoes.append(botaoDetalhes, botaoProntuario, botaoChamar, botaoSelecionar);
+          li.append(informacoes, acoes);
+          listaFila.appendChild(li);
+        });
+      } catch (error) {
+        console.error("Erro ao buscar fila:", error);
+        statusFila.textContent = error.message;
+      } finally {
+        carregandoFila = false;
+      }
+    }
+
+    function abrirInformacoesPaciente(paciente) {
+      document.getElementById("detalhe-nome-medico").textContent =
+        paciente.nome || "Informações do paciente";
+      const conteudo = document.getElementById("detalhe-dados-medico");
+      conteudo.replaceChildren();
+      const triagem = paciente.triagem || {};
+      const sinais = triagem.sinais || {};
+      const campos = [
+        ["Data/hora de entrada", dataHora(paciente.createdAt)],
+        ["CPF", paciente.cpf],
+        ["Tipo de atendimento", paciente.tipo],
+        ["Telefone", paciente.telefone],
+        ["E-mail", paciente.email],
+        ["Endereço", paciente.endereco],
+        ["Nome da mãe", paciente.nome_mae],
+        ["Sexo", paciente.sexo],
+        ["Estado civil", paciente.estado_civil],
+        ["Contato de emergência", paciente.contato_emergencia],
+        ["Doenças preexistentes", paciente.doencasPreexistentes],
+        ["Histórico médico", paciente.historicoMedico],
+        ["Sintomas", triagem.sintoma],
+        ["Temperatura", triagem.temperatura !== undefined ? `${triagem.temperatura} °C` : ""],
+        ["Pressão arterial", sinais.pressao ? `${sinais.pressao} mmHg` : ""],
+        ["Freq. cardíaca", sinais.fc != null ? `${sinais.fc} bpm` : ""],
+        ["Freq. respiratória", sinais.fr != null ? `${sinais.fr} irpm` : ""],
+        ["Saturação", sinais.spo2 != null ? `${sinais.spo2}%` : ""],
+        ["Dor", sinais.dor != null ? `${sinais.dor}/10` : ""],
+        ["Peso", sinais.peso != null ? `${sinais.peso} kg` : ""],
+        ["Alergias (todas as visitas)", (paciente.alergias || []).join(", ") || triagem.alergia],
+        ["Classificação de risco", paciente.risco || triagem.risco],
+        ["Motivo da classificação", (triagem.motivosRisco || []).join("\n")],
+        ["Triado por", triagem.funcionario],
+        ["Observações da triagem", triagem.observacao]
+      ];
+
+      campos.forEach(([rotulo, valor]) => {
+        if (valor === undefined || valor === null || valor === "") return;
+        const item = document.createElement("div");
+        item.className = "patient-detail";
+        const label = document.createElement("span");
+        label.textContent = rotulo;
+        const conteudoValor = document.createElement("strong");
+        conteudoValor.textContent = String(valor);
+        item.append(label, conteudoValor);
+        conteudo.appendChild(item);
+      });
+      modalPaciente.showModal();
+    }
+
+    async function chamarPacienteNaTV(paciente) {
+      try {
+        const resposta = await Baymax.fetch("/tv/chamar", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify({
+            paciente: paciente.nome,
+            localTipo: "CONSULTÓRIO",
+            localNumero: "01"
+          })
+        });
+        await lerResposta(resposta, "chamar o paciente na TV");
+        mostrarMensagem(`Paciente ${paciente.nome} chamado na TV.`, "sucesso");
+      } catch (error) {
+        console.error("Erro ao chamar paciente na TV:", error);
+        mostrarMensagem(error.message, "erro");
+      }
+    }
+
+    function selecionarPaciente(paciente) {
+      if (!paciente || !Number.isSafeInteger(Number(paciente.id))) {
+        mostrarMensagem("Não foi possível selecionar este paciente.", "erro");
+        return;
+      }
+
+      pacienteSelecionadoId = Number(paciente.id);
+      campoPacienteId.value = String(pacienteSelecionadoId);
+      campoPaciente.value = paciente.nome || "";
+      mostrarAlergias(paciente);
+      atualizarBotaoFinalizar();
+      mostrarMensagem(`Paciente ${paciente.nome || ""} selecionado.`, "sucesso");
+      carregarFila(true);
+      campoDiagnostico.focus();
+    }
+
+    function mostrarAlergias(paciente) {
+      const alergias = paciente.alergias || [];
+      alertaAlergia.hidden = false;
+      alertaAlergia.classList.toggle("sem", alergias.length === 0);
+      alertaAlergia.textContent = alergias.length
+        ? `⚠ Alergias registradas: ${alergias.join(", ")}`
+        : "Nenhuma alergia informada na triagem.";
+    }
+
+    function limparPacienteSelecionado() {
+      alertaAlergia.hidden = true;
+      pacienteSelecionadoId = null;
+      campoPacienteId.value = "";
+      campoPaciente.value = "";
+      atualizarBotaoFinalizar();
+    }
+
+    async function enviarConsulta(dadosConsulta) {
+      const resposta = await Baymax.fetch("/consulta", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify(dadosConsulta)
+      });
+      await lerResposta(resposta, "salvar a consulta");
+    }
+
+    async function finalizarConsulta(evento) {
+      evento.preventDefault();
+
+      if (!pacienteSelecionadoId) {
+        mostrarMensagem("Selecione um paciente na fila antes de finalizar.", "erro");
+        return;
+      }
+
+      const diagnostico = campoDiagnostico.value.trim();
+      if (!diagnostico) {
+        mostrarMensagem("Informe o diagnóstico ou a anamnese.", "erro");
+        campoDiagnostico.focus();
+        return;
+      }
+
+      const dadosConsulta = {
+        pacienteId: pacienteSelecionadoId,
+        paciente: campoPaciente.value,
+        diagnostico,
+        medicacao: campoMedicacao.value,
+        dose: document.getElementById("dose").value.trim(),
+        via: document.getElementById("via").value,
+        frequencia: document.getElementById("frequencia").value.trim(),
+        quantidade: Number(document.getElementById("qtdMed").value) || 1,
+        obs: campoObservacoes.value.trim()
+      };
+
+      botaoFinalizar.disabled = true;
+      botaoFinalizar.textContent = "Salvando consulta...";
+      mostrarMensagem("Salvando a consulta...");
+
+      try {
+        try {
+          await enviarConsulta(dadosConsulta);
+        } catch (error) {
+          // Possível alergia: só prescreve se o médico confirmar
+          const confirmou = error.dados && error.dados.alergia &&
+            window.confirm(`${error.message}\n\nDeseja prescrever mesmo assim?`);
+          if (!confirmou) throw error;
+          await enviarConsulta({ ...dadosConsulta, confirmarAlergia: true });
+        }
+
+        formularioConsulta.reset();
+        blocoPrescricao.hidden = true;
+        limparPacienteSelecionado();
+        mostrarMensagem("Consulta finalizada com sucesso.", "sucesso");
+        await carregarFila(true);
+        await carregarMedicacoes();
+      } catch (error) {
+        console.error("Erro ao salvar consulta:", error);
+        mostrarMensagem(error.message || "Não foi possível conectar ao servidor.", "erro");
+      } finally {
+        atualizarBotaoFinalizar();
+      }
+    }
+
+    function inicializarTelaMedica() {
+      formularioConsulta.addEventListener("submit", finalizarConsulta);
+      document.getElementById("fechar-detalhe-medico").addEventListener(
+        "click",
+        () => modalPaciente.close()
+      );
+      modalPaciente.addEventListener("click", evento => {
+        if (evento.target === modalPaciente) modalPaciente.close();
+      });
+      campoMedicacao.addEventListener("change", () => {
+        blocoPrescricao.hidden = !campoMedicacao.value;
+      });
+      atualizarBotaoFinalizar();
+      carregarMedicacoes();
+      carregarFila();
+      window.setInterval(() => carregarFila(true), 5000);
+    }
+
+    if (Baymax.iniciar(["medico"])) inicializarTelaMedica();
+  </script>
+</body>
+</html>

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0b141a">
+  <title>Ajuda - Baymax</title>
+  <link rel="stylesheet" href="css/system.css">
+</head>
+<body class="page-help">
+  <main class="help-layout">
+    <header class="help-heading">
+      <div>
+        <span class="dashboard-kicker">CENTRAL DE AJUDA</span>
+        <h1>Como usar o sistema</h1>
+        <p>Orientações rápidas para navegar pelos módulos da demonstração.</p>
+      </div>
+      <a class="btn-link" href="dashboard.html">Voltar à visão geral</a>
+    </header>
+
+    <div class="help-callout">
+      Este é um projeto de demonstração, não um sistema clínico validado. Não registre dados reais
+      nem use as informações exibidas para orientar decisões de atendimento.
+    </div>
+
+    <div class="help-grid">
+      <section class="help-card" aria-labelledby="ajuda-perfil">
+        <h2 id="ajuda-perfil">Seu perfil e os módulos</h2>
+        <p>
+          O menu lateral e os atalhos da visão geral mostram os módulos permitidos para o setor da
+          conta conectada. Se um recurso não aparecer, solicite ao administrador que revise o
+          perfil de acesso.
+        </p>
+      </section>
+
+      <section class="help-card" aria-labelledby="ajuda-fluxo">
+        <h2 id="ajuda-fluxo">Fluxo de atendimento</h2>
+        <ul>
+          <li>Atendimento cadastra a chegada do paciente.</li>
+          <li>Triagem registra sintomas e classificação de risco.</li>
+          <li>Médico registra consulta, diagnóstico e encaminhamento.</li>
+          <li>Medicação e alta concluem as etapas correspondentes.</li>
+        </ul>
+      </section>
+
+      <section class="help-card" aria-labelledby="ajuda-risco">
+        <h2 id="ajuda-risco">Classificação de risco</h2>
+        <p>
+          As cores são usadas pelo fluxo de demonstração para identificar prioridade. A classificação
+          exibida não substitui avaliação profissional, protocolos oficiais ou julgamento clínico.
+        </p>
+      </section>
+
+      <section class="help-card" aria-labelledby="ajuda-tema">
+        <h2 id="ajuda-tema">Tema e navegação</h2>
+        <p>
+          Use o botão de tema no menu lateral para alternar entre a aparência escura e a clara. A
+          preferência fica salva neste navegador. Em telas pequenas, abra o menu pelo botão no topo.
+        </p>
+      </section>
+
+      <section class="help-card" aria-labelledby="ajuda-backend">
+        <h2 id="ajuda-backend">O que faz o back-end</h2>
+        <p>
+          O back-end é o servidor da aplicação. Ele recebe as solicitações do site, valida os dados,
+          verifica as permissões e devolve respostas para atualizar as telas. Neste projeto, ele é
+          feito em Node.js com Express, no arquivo <code>backend/server.js</code>.
+        </p>
+        <p>
+          O navegador conversa com o servidor por uma API HTTP que troca dados em JSON. Por exemplo,
+          ao entrar, o site envia as credenciais para <code>/login</code>; ao consultar um perfil,
+          solicita os dados ao servidor, que confere se a conta pode acessá-los.
+        </p>
+      </section>
+
+      <section class="help-card" aria-labelledby="ajuda-acesso-backend">
+        <h2 id="ajuda-acesso-backend">Login e permissões</h2>
+        <ul>
+          <li><code>/login</code> autentica contas comuns e <code>/login/admin</code> autentica administradores.</li>
+          <li>Após o login, o servidor devolve um token de sessão; o site o envia nas próximas solicitações.</li>
+          <li>O servidor verifica o token e as permissões em cada operação protegida. A interface esconder um botão, por si só, não concede nem bloqueia acesso.</li>
+          <li>Senhas novas são armazenadas com hash; senhas antigas em texto puro são atualizadas após um login bem-sucedido. Em produção, use credenciais fortes e únicas e não publique contas de demonstração.</li>
+        </ul>
+      </section>
+
+      <section class="help-card" aria-labelledby="ajuda-dados-backend">
+        <h2 id="ajuda-dados-backend">Onde os dados ficam</h2>
+        <p>
+          Atualmente, os dados da aplicação são gravados em <code>backend/db.json</code> (ou no
+          caminho definido por <code>BAYMAX_DB_FILE</code>). Isso é conveniente para desenvolvimento,
+          mas não é um banco de dados gerenciado: o arquivo pode ser perdido em reinícios ou novos
+          deploys se o serviço não tiver armazenamento persistente.
+        </p>
+        <p>
+          Antes de publicar no Render, configure um disco persistente e a variável
+          <code>BAYMAX_DB_FILE</code> para apontar para ele, ou migre os dados para um banco
+          gerenciado. Planeje também backups e restauração. Não use dados reais de pacientes nesta
+          demonstração.
+        </p>
+      </section>
+
+      <section class="help-card" aria-labelledby="ajuda-publicacao">
+        <h2 id="ajuda-publicacao">Executar e publicar</h2>
+        <ul>
+          <li>O comando de inicialização local é <code>npm start</code>; o servidor usa a porta fornecida pelo ambiente, como o Render.</li>
+          <li>Configure <code>SESSION_SECRET</code> como segredo nas variáveis de ambiente da hospedagem. Use um valor aleatório forte com pelo menos 32 caracteres e não o inclua no código.</li>
+          <li>Antes de publicar alterações, execute <code>npm test</code> e confira os logs do serviço se a inicialização ou alguma solicitação falhar.</li>
+          <li>Este projeto é uma demonstração e não foi validado para uso clínico ou para armazenar informações pessoais reais.</li>
+        </ul>
+      </section>
+    </div>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script>
+    Baymax.iniciar(Object.keys(Baymax.SETORES));
+  </script>
+</body>
+</html>

@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#087eac">
+  <title>Laboratório - Baymax</title>
+  <link rel="stylesheet" href="css/system.css">
+</head>
+<body class="page-module">
+  <main class="module-layout">
+    <header class="module-heading">
+      <div>
+        <span class="module-kicker">DIAGNÓSTICO E EXAMES</span>
+        <h1>Laboratório</h1>
+        <p>Solicite exames, acompanhe coleta e libere resultados no histórico do paciente.</p>
+      </div>
+      <button type="button" class="module-secondary" id="atualizar">Atualizar solicitações</button>
+    </header>
+
+    <p class="module-message" id="mensagem" role="status" aria-live="polite"></p>
+
+    <section class="module-panel" id="painel-catalogo" aria-labelledby="titulo-catalogo" hidden>
+      <h2 id="titulo-catalogo">Catálogo de exames</h2>
+      <p class="module-hint">Cadastre os exames realmente oferecidos pelo laboratório. Não há itens fictícios pré-carregados.</p>
+      <form class="module-form" id="form-catalogo">
+        <div class="module-fields">
+          <label class="module-field" for="codigo-exame">Código *
+            <input id="codigo-exame" maxlength="30" required>
+          </label>
+          <label class="module-field" for="nome-exame">Nome *
+            <input id="nome-exame" maxlength="120" required>
+          </label>
+          <label class="module-field full" for="descricao-exame">Descrição
+            <input id="descricao-exame" maxlength="300">
+          </label>
+        </div>
+        <button type="submit">Cadastrar exame</button>
+      </form>
+      <div class="module-list" id="lista-catalogo" aria-live="polite"></div>
+    </section>
+
+    <section class="module-panel" id="painel-solicitacao" aria-labelledby="titulo-solicitacao" hidden>
+      <h2 id="titulo-solicitacao">Solicitar exame</h2>
+      <form class="module-form" id="form-busca-paciente">
+        <div class="module-fields">
+          <label class="module-field" for="busca-paciente">Paciente por nome ou CPF
+            <input id="busca-paciente" type="search" autocomplete="off" placeholder="Digite ao menos 2 caracteres">
+          </label>
+          <div class="module-field">
+            <span>Paciente selecionado</span>
+            <strong id="paciente-selecionado">Nenhum paciente selecionado</strong>
+          </div>
+        </div>
+        <button type="submit">Pesquisar pacientes</button>
+      </form>
+      <div class="module-list" id="resultados-pacientes" aria-live="polite"></div>
+      <form class="module-form" id="form-solicitacao">
+        <div class="module-fields">
+          <label class="module-field" for="exame-solicitado">Exame *
+            <select id="exame-solicitado" required>
+              <option value="">Carregando catálogo...</option>
+            </select>
+          </label>
+          <label class="module-field" for="prioridade-exame">Prioridade *
+            <select id="prioridade-exame" required>
+              <option value="rotina">Rotina</option>
+              <option value="urgente">Urgente</option>
+            </select>
+          </label>
+          <label class="module-field" for="internacao-exame">Internação ativa (opcional)
+            <select id="internacao-exame">
+              <option value="">Ambulatorial / sem internação</option>
+            </select>
+          </label>
+          <label class="module-field full" for="indicacao-exame">Indicação clínica *
+            <textarea id="indicacao-exame" rows="3" maxlength="1000" required></textarea>
+          </label>
+        </div>
+        <button type="submit">Enviar solicitação</button>
+      </form>
+    </section>
+
+    <section class="module-panel" aria-labelledby="titulo-solicitacoes">
+      <div class="module-heading">
+        <h2 id="titulo-solicitacoes">Solicitações e resultados</h2>
+        <label class="module-field" for="filtro-status">Status
+          <select id="filtro-status">
+            <option value="">Todos</option>
+            <option value="solicitado">Solicitado</option>
+            <option value="coletado">Coletado</option>
+            <option value="resultado_liberado">Resultado liberado</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+        </label>
+      </div>
+      <div class="module-list" id="lista-solicitacoes" aria-live="polite">
+        <p class="module-empty">Carregando solicitações...</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script>
+    const sessao = Baymax.iniciar(["medico", "laboratorista", "enfermagem", "tecnico_enfermagem"]);
+    const podeSolicitar = sessao && ["admin", "medico"].includes(sessao.tipo);
+    const podeGerenciarCatalogo = sessao && sessao.tipo === "admin";
+    const podeLiberarResultado = sessao && ["admin", "laboratorista"].includes(sessao.tipo);
+    const podeColetar = sessao && ["admin", "laboratorista", "enfermagem", "tecnico_enfermagem"].includes(sessao.tipo);
+    const mensagem = document.getElementById("mensagem");
+    const listaSolicitacoes = document.getElementById("lista-solicitacoes");
+    const listaCatalogo = document.getElementById("lista-catalogo");
+    const seletorExame = document.getElementById("exame-solicitado");
+    const seletorInternacao = document.getElementById("internacao-exame");
+    const resultadosPacientes = document.getElementById("resultados-pacientes");
+    let pacienteAtual = null;
+    let catalogoAtual = [];
+
+    const STATUS = {
+      solicitado: "Solicitado",
+      coletado: "Coletado",
+      resultado_liberado: "Resultado liberado",
+      cancelado: "Cancelado"
+    };
+
+    function informar(texto, tipo = "") {
+      mensagem.textContent = texto;
+      mensagem.className = `module-message${tipo ? ` ${tipo}` : ""}`;
+    }
+
+    function botao(rotulo, acao) {
+      const elemento = document.createElement("button");
+      elemento.type = "button";
+      elemento.className = "module-secondary";
+      elemento.textContent = rotulo;
+      elemento.addEventListener("click", acao);
+      return elemento;
+    }
+
+    async function carregarCatalogo() {
+      catalogoAtual = await Baymax.api("/exames/catalogo");
+      seletorExame.replaceChildren(new Option("Selecione um exame cadastrado", ""));
+      catalogoAtual.forEach(exame => {
+        seletorExame.add(new Option(`${exame.codigo} · ${exame.nome}`, exame.id));
+      });
+      listaCatalogo.replaceChildren();
+      if (!catalogoAtual.length) {
+        listaCatalogo.appendChild(Object.assign(document.createElement("p"), {
+          className: "module-empty",
+          textContent: "Nenhum exame ativo no catálogo."
+        }));
+        return;
+      }
+      catalogoAtual.forEach(exame => {
+        const registro = document.createElement("article");
+        registro.className = "module-record";
+        const nome = document.createElement("strong");
+        nome.textContent = `${exame.codigo} · ${exame.nome}`;
+        const descricao = document.createElement("small");
+        descricao.textContent = exame.descricao || "Sem descrição.";
+        registro.append(nome, descricao);
+        if (podeGerenciarCatalogo) {
+          registro.appendChild(botao("Desativar exame", async () => {
+            try {
+              await Baymax.api(`/exames/catalogo/${exame.id}`, {
+                method: "PATCH",
+                body: { ativo: false }
+              });
+              await atualizarDados();
+              informar("Exame desativado; solicitações existentes foram preservadas.", "success");
+            } catch (erro) {
+              informar(erro.message, "error");
+            }
+          }));
+        }
+        listaCatalogo.appendChild(registro);
+      });
+    }
+
+    async function carregarInternacoes() {
+      if (!podeSolicitar) return;
+      const internacoes = await Baymax.api("/internacoes?status=ativa");
+      seletorInternacao.replaceChildren(new Option("Ambulatorial / sem internação", ""));
+      internacoes.forEach(item => {
+        seletorInternacao.add(new Option(
+          `${item.paciente?.nome || "Paciente"} · Quarto ${item.leito?.quarto || "—"} · Leito ${item.leito?.numero || "—"}`,
+          item.id
+        ));
+      });
+    }
+
+    async function buscarPacientes(evento) {
+      evento.preventDefault();
+      const termo = document.getElementById("busca-paciente").value.trim();
+      resultadosPacientes.replaceChildren();
+      if (termo.length < 2) {
+        informar("Digite ao menos 2 caracteres para pesquisar.", "error");
+        return;
+      }
+      try {
+        const pessoas = await Baymax.api(`/exames/pacientes?busca=${encodeURIComponent(termo)}`);
+        if (!pessoas.length) {
+          resultadosPacientes.appendChild(Object.assign(document.createElement("p"), {
+            className: "module-empty",
+            textContent: "Nenhum paciente encontrado."
+          }));
+          return;
+        }
+        pessoas.forEach(pessoa => {
+          const opcao = botao(`${pessoa.nome} · CPF ${pessoa.cpf}`, () => {
+            pacienteAtual = pessoa;
+            document.getElementById("paciente-selecionado").textContent =
+              `${pessoa.nome} · CPF ${pessoa.cpf}`;
+            resultadosPacientes.replaceChildren();
+          });
+          opcao.className = "module-record";
+          resultadosPacientes.appendChild(opcao);
+        });
+      } catch (erro) {
+        informar(erro.message, "error");
+      }
+    }
+
+    function criarCartao(solicitacao) {
+      const cartao = document.createElement("article");
+      cartao.className = "module-record";
+      const paciente = document.createElement("strong");
+      paciente.textContent = solicitacao.paciente?.nome || "Paciente não identificado";
+      const exame = document.createElement("small");
+      exame.textContent = solicitacao.exame
+        ? `${solicitacao.exame.codigo} · ${solicitacao.exame.nome}`
+        : "Exame não identificado";
+      const detalhes = document.createElement("small");
+      detalhes.textContent = `${STATUS[solicitacao.status] || solicitacao.status} · ${solicitacao.prioridade === "urgente" ? "Urgente" : "Rotina"} · Solicitado por ${solicitacao.solicitadoPor} · ${Baymax.dataHora(solicitacao.createdAt)}`;
+      const indicacao = document.createElement("small");
+      indicacao.textContent = `Indicação: ${solicitacao.indicacao}`;
+      cartao.append(paciente, exame, detalhes, indicacao);
+
+      if (solicitacao.status === "solicitado" && podeColetar) {
+        cartao.appendChild(botao("Registrar coleta", async () => {
+          try {
+            await Baymax.api(`/exames/${solicitacao.id}/coleta`, {
+              method: "POST",
+              body: {}
+            });
+            await carregarSolicitacoes();
+            informar("Coleta registrada.", "success");
+          } catch (erro) {
+            informar(erro.message, "error");
+          }
+        }));
+      }
+
+      if (solicitacao.status === "coletado" && podeLiberarResultado) {
+        const resultado = document.createElement("textarea");
+        resultado.rows = 3;
+        resultado.maxLength = 10000;
+        resultado.placeholder = "Resultado textual do exame *";
+        resultado.setAttribute("aria-label", `Resultado do exame ${solicitacao.exame?.nome || ""}`);
+        const liberar = botao("Liberar resultado", async () => {
+          try {
+            await Baymax.api(`/exames/${solicitacao.id}/resultado`, {
+              method: "POST",
+              body: { resultado: resultado.value }
+            });
+            await carregarSolicitacoes();
+            informar("Resultado liberado e disponível no prontuário.", "success");
+          } catch (erro) {
+            informar(erro.message, "error");
+          }
+        });
+        cartao.append(resultado, liberar);
+      }
+
+      if (solicitacao.status === "resultado_liberado") {
+        const resultado = document.createElement("p");
+        resultado.className = "module-hint";
+        resultado.textContent = `Resultado: ${solicitacao.resultado}`;
+        const liberacao = document.createElement("small");
+        liberacao.textContent = `Liberado por ${solicitacao.resultadoPor} · ${Baymax.dataHora(solicitacao.resultadoEm)}`;
+        cartao.append(resultado, liberacao);
+      }
+
+      if (solicitacao.status === "solicitado" &&
+          (sessao.tipo === "admin" ||
+            (sessao.tipo === "medico" && solicitacao.solicitadoPorUsuario === sessao.usuario))) {
+        cartao.appendChild(botao("Cancelar solicitação", async () => {
+          try {
+            await Baymax.api(`/exames/${solicitacao.id}/cancelar`, { method: "POST", body: {} });
+            await carregarSolicitacoes();
+            informar("Solicitação cancelada.", "success");
+          } catch (erro) {
+            informar(erro.message, "error");
+          }
+        }));
+      }
+      return cartao;
+    }
+
+    async function carregarSolicitacoes() {
+      const status = document.getElementById("filtro-status").value;
+      try {
+        const solicitacoes = await Baymax.api(`/exames?status=${encodeURIComponent(status)}`);
+        listaSolicitacoes.replaceChildren();
+        if (!solicitacoes.length) {
+          listaSolicitacoes.appendChild(Object.assign(document.createElement("p"), {
+            className: "module-empty",
+            textContent: "Nenhuma solicitação encontrada."
+          }));
+          return;
+        }
+        solicitacoes.forEach(item => listaSolicitacoes.appendChild(criarCartao(item)));
+      } catch (erro) {
+        informar(erro.message, "error");
+      }
+    }
+
+    async function atualizarDados() {
+      try {
+        await carregarCatalogo();
+        await carregarInternacoes();
+        await carregarSolicitacoes();
+      } catch (erro) {
+        informar(erro.message, "error");
+      }
+    }
+
+    if (sessao) {
+      document.getElementById("painel-catalogo").hidden = !podeGerenciarCatalogo;
+      document.getElementById("painel-solicitacao").hidden = !podeSolicitar;
+      document.getElementById("form-catalogo").addEventListener("submit", async evento => {
+        evento.preventDefault();
+        const formulario = evento.currentTarget;
+        try {
+          await Baymax.api("/exames/catalogo", {
+            method: "POST",
+            body: {
+              codigo: document.getElementById("codigo-exame").value,
+              nome: document.getElementById("nome-exame").value,
+              descricao: document.getElementById("descricao-exame").value
+            }
+          });
+          formulario.reset();
+          await atualizarDados();
+          informar("Exame cadastrado.", "success");
+        } catch (erro) {
+          informar(erro.message, "error");
+        }
+      });
+      document.getElementById("form-busca-paciente").addEventListener("submit", buscarPacientes);
+      document.getElementById("form-solicitacao").addEventListener("submit", async evento => {
+        evento.preventDefault();
+        const formulario = evento.currentTarget;
+        if (!pacienteAtual) {
+          informar("Pesquise e selecione um paciente.", "error");
+          return;
+        }
+        try {
+          await Baymax.api("/exames", {
+            method: "POST",
+            body: {
+              pessoaId: pacienteAtual.id,
+              exameId: Number(seletorExame.value),
+              prioridade: document.getElementById("prioridade-exame").value,
+              indicacao: document.getElementById("indicacao-exame").value,
+              internacaoId: seletorInternacao.value || undefined
+            }
+          });
+          formulario.reset();
+          pacienteAtual = null;
+          document.getElementById("paciente-selecionado").textContent = "Nenhum paciente selecionado";
+          await atualizarDados();
+          informar("Solicitação de exame registrada.", "success");
+        } catch (erro) {
+          informar(erro.message, "error");
+        }
+      });
+      document.getElementById("filtro-status").addEventListener("change", carregarSolicitacoes);
+      document.getElementById("atualizar").addEventListener("click", atualizarDados);
+      atualizarDados();
+    }
+  </script>
+</body>
+</html>

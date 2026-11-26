@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#087eac">
+  <title>Centro cirúrgico - Baymax</title>
+  <link rel="stylesheet" href="css/system.css">
+</head>
+<body class="page-module">
+  <main class="module-layout">
+    <header class="module-heading">
+      <div>
+        <span class="module-kicker">CENTRO CIRÚRGICO</span>
+        <h1>Cirurgias</h1>
+        <p>Agende procedimentos com equipe e sala, registre realização e consulte o histórico do paciente.</p>
+      </div>
+      <button type="button" class="module-secondary" id="atualizar">Atualizar agenda</button>
+    </header>
+
+    <p class="module-message" id="mensagem" role="status" aria-live="polite"></p>
+
+    <section class="module-panel" id="painel-administracao" aria-labelledby="titulo-administracao" hidden>
+      <h2 id="titulo-administracao">Salas e procedimentos</h2>
+      <p class="module-hint">Cadastre somente salas e procedimentos disponíveis no projeto demonstrativo.</p>
+      <div class="module-columns">
+        <form class="module-form" id="form-sala">
+          <h3>Cadastrar sala</h3>
+          <label class="module-field" for="nome-sala">Nome da sala *
+            <input id="nome-sala" maxlength="80" required>
+          </label>
+          <label class="module-field" for="local-sala">Local
+            <input id="local-sala" maxlength="120">
+          </label>
+          <button type="submit">Cadastrar sala</button>
+        </form>
+        <form class="module-form" id="form-procedimento">
+          <h3>Cadastrar procedimento</h3>
+          <label class="module-field" for="codigo-procedimento">Código *
+            <input id="codigo-procedimento" maxlength="30" required>
+          </label>
+          <label class="module-field" for="nome-procedimento">Nome *
+            <input id="nome-procedimento" maxlength="150" required>
+          </label>
+          <label class="module-field" for="descricao-procedimento">Descrição
+            <input id="descricao-procedimento" maxlength="500">
+          </label>
+          <button type="submit">Cadastrar procedimento</button>
+        </form>
+      </div>
+      <div class="module-columns">
+        <div>
+          <h3>Salas cadastradas</h3>
+          <div class="module-list" id="lista-salas"></div>
+        </div>
+        <div>
+          <h3>Procedimentos cadastrados</h3>
+          <div class="module-list" id="lista-procedimentos"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="module-panel" id="painel-agendamento" aria-labelledby="titulo-agendamento" hidden>
+      <h2 id="titulo-agendamento">Agendar cirurgia</h2>
+      <form class="module-form" id="form-busca-paciente">
+        <div class="module-fields">
+          <label class="module-field" for="busca-paciente">Localizar paciente por nome ou CPF
+            <input id="busca-paciente" type="search" autocomplete="off" placeholder="Digite ao menos 2 caracteres">
+          </label>
+          <div class="module-field">
+            <span>Paciente selecionado</span>
+            <strong id="paciente-selecionado">Nenhum paciente selecionado</strong>
+          </div>
+        </div>
+        <button type="submit">Pesquisar pacientes</button>
+      </form>
+      <div class="module-list" id="resultados-pacientes"></div>
+      <form class="module-form" id="form-agendamento">
+        <div class="module-fields">
+          <label class="module-field" for="procedimento">Procedimento *
+            <select id="procedimento" required>
+              <option value="">Carregando procedimentos...</option>
+            </select>
+          </label>
+          <label class="module-field" for="sala">Sala *
+            <select id="sala" required>
+              <option value="">Carregando salas...</option>
+            </select>
+          </label>
+          <label class="module-field" for="cirurgiao">Cirurgião responsável *
+            <select id="cirurgiao" required>
+              <option value="">Carregando médicos...</option>
+            </select>
+          </label>
+          <label class="module-field" for="equipe">Equipe médica adicional
+            <select id="equipe" multiple size="4" aria-describedby="ajuda-equipe"></select>
+          </label>
+          <p class="module-hint full" id="ajuda-equipe">Use Ctrl (Windows) ou Command (Mac) para selecionar mais de um médico.</p>
+          <label class="module-field" for="inicio">Data e hora *
+            <input id="inicio" type="datetime-local" required>
+          </label>
+          <label class="module-field" for="duracao">Duração prevista (minutos) *
+            <input id="duracao" type="number" min="15" max="1440" step="1" value="60" required>
+          </label>
+          <label class="module-field" for="internacao">Internação ativa (opcional)
+            <select id="internacao">
+              <option value="">Ambulatorial / sem internação</option>
+            </select>
+          </label>
+          <label class="module-field full" for="observacoes">Observações
+            <textarea id="observacoes" rows="3" maxlength="2000"></textarea>
+          </label>
+        </div>
+        <button type="submit">Agendar cirurgia</button>
+      </form>
+    </section>
+
+    <section class="module-panel" aria-labelledby="titulo-agenda">
+      <div class="module-heading">
+        <h2 id="titulo-agenda">Agenda cirúrgica</h2>
+        <label class="module-field" for="filtro-status">Status
+          <select id="filtro-status">
+            <option value="">Todos</option>
+            <option value="agendada">Agendadas</option>
+            <option value="realizada">Realizadas</option>
+            <option value="cancelada">Canceladas</option>
+          </select>
+        </label>
+      </div>
+      <div class="module-list" id="lista-cirurgias" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script>
+    const sessao = Baymax.iniciar(["medico", "centro_cirurgico"]);
+    const podeAgendar = sessao && ["admin", "medico", "centro_cirurgico"].includes(sessao.tipo);
+    const podeAdministrar = sessao && sessao.tipo === "admin";
+    const mensagem = document.getElementById("mensagem");
+    const listaCirurgias = document.getElementById("lista-cirurgias");
+    const listaSalas = document.getElementById("lista-salas");
+    const listaProcedimentos = document.getElementById("lista-procedimentos");
+    const resultadosPacientes = document.getElementById("resultados-pacientes");
+    const pacienteSelecionado = document.getElementById("paciente-selecionado");
+    const seletorProcedimento = document.getElementById("procedimento");
+    const seletorSala = document.getElementById("sala");
+    const seletorCirurgiao = document.getElementById("cirurgiao");
+    const seletorEquipe = document.getElementById("equipe");
+    const seletorInternacao = document.getElementById("internacao");
+    let pessoaAtual = null;
+    let cirurgiasAtuais = [];
+    let salasAtuais = [];
+    let procedimentosAtuais = [];
+
+    const STATUS = { agendada: "Agendada", realizada: "Realizada", cancelada: "Cancelada" };
+
+    function informar(texto, tipo = "") {
+      mensagem.textContent = texto;
+      mensagem.className = `module-message${tipo ? ` ${tipo}` : ""}`;
+    }
+
+    function botao(rotulo, acao) {
+      const elemento = document.createElement("button");
+      elemento.type = "button";
+      elemento.className = "module-secondary";
+      elemento.textContent = rotulo;
+      elemento.addEventListener("click", acao);
+      return elemento;
+    }
+
+    function renderizarCadastro(lista, itens, desativar) {
+      lista.replaceChildren();
+      if (!itens.length) {
+        lista.appendChild(Object.assign(document.createElement("p"), {
+          className: "module-empty",
+          textContent: "Nenhum item cadastrado."
+        }));
+        return;
+      }
+      itens.forEach(item => {
+        const registro = document.createElement("article");
+        registro.className = "module-record";
+        const nome = document.createElement("strong");
+        nome.textContent = item.nome;
+        const detalhe = document.createElement("small");
+        detalhe.textContent = item.codigo ? `${item.codigo}${item.descricao ? ` · ${item.descricao}` : ""}` : item.local || "Sala cirúrgica";
+        registro.append(nome, detalhe);
+        if (podeAdministrar) registro.appendChild(botao("Desativar", () => desativar(item)));
+        lista.appendChild(registro);
+      });
+    }
+
+    async function carregarCatalogos() {
+      const [salas, procedimentos] = await Promise.all([
+        Baymax.api("/cirurgias/salas"),
+        Baymax.api("/cirurgias/catalogo")
+      ]);
+      salasAtuais = salas;
+      procedimentosAtuais = procedimentos;
+      seletorSala.replaceChildren(new Option("Selecione uma sala ativa", ""));
+      salas.filter(item => item.status === "ativa").forEach(item =>
+        seletorSala.add(new Option(`${item.nome}${item.local ? ` · ${item.local}` : ""}`, item.id))
+      );
+      seletorProcedimento.replaceChildren(new Option("Selecione um procedimento", ""));
+      procedimentos.forEach(item =>
+        seletorProcedimento.add(new Option(`${item.codigo} · ${item.nome}`, item.id))
+      );
+      renderizarCadastro(listaSalas, salas, async sala => {
+        try {
+          await Baymax.api(`/cirurgias/salas/${sala.id}`, {
+            method: "PATCH",
+            body: { status: sala.status === "manutencao" ? "ativa" : "manutencao" }
+          });
+          await atualizarDados();
+          informar("Status da sala atualizado.", "success");
+        } catch (erro) {
+          informar(erro.message, "error");
+        }
+      });
+      renderizarCadastro(listaProcedimentos, procedimentos, async procedimento => {
+        try {
+          await Baymax.api(`/cirurgias/catalogo/${procedimento.id}`, {
+            method: "PATCH",
+            body: { ativo: false }
+          });
+          await atualizarDados();
+          informar("Procedimento desativado; o histórico foi preservado.", "success");
+        } catch (erro) {
+          informar(erro.message, "error");
+        }
+      });
+    }
+
+    async function carregarMedicosEInternacoes() {
+      const [medicos, internacoes] = await Promise.all([
+        Baymax.api("/cirurgias/medicos"),
+        Baymax.api("/internacoes?status=ativa")
+      ]);
+      seletorCirurgiao.replaceChildren(new Option("Selecione o cirurgião responsável", ""));
+      seletorEquipe.replaceChildren();
+      medicos.forEach(item => {
+        seletorCirurgiao.add(new Option(item.nome, item.usuario));
+        if (!sessao || sessao.tipo !== "medico" || item.usuario.toLowerCase() !== sessao.usuario.toLowerCase()) {
+          seletorEquipe.add(new Option(item.nome, item.usuario));
+        }
+      });
+      if (sessao && sessao.tipo === "medico") {
+        seletorCirurgiao.value = sessao.usuario;
+        seletorCirurgiao.disabled = true;
+      }
+      seletorInternacao.replaceChildren(new Option("Ambulatorial / sem internação", ""));
+      internacoes.forEach(item => {
+        seletorInternacao.add(new Option(
+          `${item.paciente?.nome || "Paciente"} · Quarto ${item.leito?.quarto || "—"} · Leito ${item.leito?.numero || "—"}`,
+          item.id
+        ));
+      });
+    }
+
+    async function buscarPacientes(evento) {
+      evento.preventDefault();
+      const termo = document.getElementById("busca-paciente").value.trim();
+      resultadosPacientes.replaceChildren();
+      if (termo.length < 2) {
+        informar("Digite ao menos 2 caracteres para pesquisar.", "error");
+        return;
+      }
+      try {
+        const pessoas = await Baymax.api(`/cirurgias/pacientes?busca=${encodeURIComponent(termo)}`);
+        if (!pessoas.length) {
+          resultadosPacientes.appendChild(Object.assign(document.createElement("p"), {
+            className: "module-empty",
+            textContent: "Nenhum paciente encontrado."
+          }));
+          return;
+        }
+        pessoas.forEach(pessoa => {
+          const opcao = botao(`${pessoa.nome} · CPF ${pessoa.cpf}`, () => {
+            pessoaAtual = pessoa;
+            pacienteSelecionado.textContent = `${pessoa.nome} · CPF ${pessoa.cpf}`;
+            resultadosPacientes.replaceChildren();
+          });
+          opcao.className = "module-record";
+          resultadosPacientes.appendChild(opcao);
+        });
+      } catch (erro) {
+        informar(erro.message, "error");
+      }
+    }
+
+    function criarCirurgia(cirurgia) {
+      const cartao = document.createElement("article");
+      cartao.className = "module-record";
+      const paciente = document.createElement("strong");
+      paciente.textContent = cirurgia.paciente?.nome || "Paciente";
+      const quando = document.createElement("small");
+      quando.textContent = `${new Date(cirurgia.inicio).toLocaleString("pt-BR")} · ${cirurgia.duracaoMinutos} min`;
+      const detalhes = document.createElement("small");
+      detalhes.textContent = [
+        cirurgia.procedimento && `${cirurgia.procedimento.codigo} · ${cirurgia.procedimento.nome}`,
+        cirurgia.sala && `Sala ${cirurgia.sala.nome}`,
+        `Cirurgião: ${cirurgia.cirurgiaoNome}`,
+        cirurgia.equipe.length && `Equipe: ${cirurgia.equipe.map(item => item.nome).join(", ")}`
+      ].filter(Boolean).join(" · ");
+      const estado = document.createElement("span");
+      estado.className = "module-chip";
+      estado.textContent = STATUS[cirurgia.status] || cirurgia.status;
+      cartao.append(paciente, quando, detalhes, estado);
+      if (cirurgia.observacoes) {
+        const observacoes = document.createElement("small");
+        observacoes.textContent = `Observações: ${cirurgia.observacoes}`;
+        cartao.appendChild(observacoes);
+      }
+      if (cirurgia.resumo) {
+        const resumo = document.createElement("small");
+        resumo.textContent = `Resumo: ${cirurgia.resumo}`;
+        cartao.appendChild(resumo);
+      }
+      if (cirurgia.intercorrencias) {
+        const intercorrencias = document.createElement("small");
+        intercorrencias.textContent = `Intercorrências: ${cirurgia.intercorrencias}`;
+        cartao.appendChild(intercorrencias);
+      }
+      if (cirurgia.status === "agendada" && podeAgendar) {
+        const resumo = document.createElement("textarea");
+        resumo.rows = 2;
+        resumo.maxLength = 4000;
+        resumo.placeholder = "Resumo do procedimento realizado *";
+        resumo.setAttribute("aria-label", "Resumo da cirurgia");
+        const intercorrencias = document.createElement("textarea");
+        intercorrencias.rows = 2;
+        intercorrencias.maxLength = 2000;
+        intercorrencias.placeholder = "Intercorrências, se houver";
+        intercorrencias.setAttribute("aria-label", "Intercorrências");
+        const podeFinalizar = sessao.tipo !== "medico" ||
+          cirurgia.cirurgiao.toLowerCase() === sessao.usuario.toLowerCase();
+        if (podeFinalizar) {
+          cartao.append(resumo, intercorrencias, botao("Registrar cirurgia realizada", async () => {
+            try {
+              await Baymax.api(`/cirurgias/${cirurgia.id}/realizar`, {
+                method: "POST",
+                body: { resumo: resumo.value, intercorrencias: intercorrencias.value }
+              });
+              await carregarAgenda();
+              informar("Realização e resumo cirúrgico registrados no prontuário.", "success");
+            } catch (erro) {
+              informar(erro.message, "error");
+            }
+          }));
+        }
+        const podeCancelar = sessao.tipo !== "medico" ||
+          cirurgia.cirurgiao.toLowerCase() === sessao.usuario.toLowerCase();
+        if (podeCancelar) {
+          const motivo = document.createElement("input");
+          motivo.maxLength = 500;
+          motivo.placeholder = "Motivo do cancelamento";
+          motivo.setAttribute("aria-label", "Motivo do cancelamento");
+          cartao.append(motivo, botao("Cancelar", async () => {
+            try {
+              await Baymax.api(`/cirurgias/${cirurgia.id}/cancelar`, {
+                method: "POST",
+                body: { motivo: motivo.value }
+              });
+              await carregarAgenda();
+              informar("Cirurgia cancelada.", "success");
+            } catch (erro) {
+              informar(erro.message, "error");
+            }
+          }));
+        }
+      }
+      return cartao;
+    }
+
+    async function carregarAgenda() {
+      const status = document.getElementById("filtro-status").value;
+      try {
+        cirurgiasAtuais = await Baymax.api(`/cirurgias?status=${encodeURIComponent(status)}`);
+        listaCirurgias.replaceChildren();
+        if (!cirurgiasAtuais.length) {
+          listaCirurgias.appendChild(Object.assign(document.createElement("p"), {
+            className: "module-empty",
+            textContent: "Nenhuma cirurgia encontrada."
+          }));
+          return;
+        }
+        cirurgiasAtuais.forEach(cirurgia => listaCirurgias.appendChild(criarCirurgia(cirurgia)));
+      } catch (erro) {
+        informar(erro.message, "error");
+      }
+    }
+
+    async function atualizarDados() {
+      try {
+        await carregarCatalogos();
+        await carregarMedicosEInternacoes();
+        await carregarAgenda();
+      } catch (erro) {
+        informar(erro.message, "error");
+      }
+    }
+
+    if (sessao) {
+      document.getElementById("painel-administracao").hidden = !podeAdministrar;
+      document.getElementById("painel-agendamento").hidden = !podeAgendar;
+      document.getElementById("form-busca-paciente").addEventListener("submit", buscarPacientes);
+      document.getElementById("form-sala").addEventListener("submit", async evento => {
+        evento.preventDefault();
+        const formulario = evento.currentTarget;
+        try {
+          await Baymax.api("/cirurgias/salas", {
+            method: "POST",
+            body: {
+              nome: document.getElementById("nome-sala").value,
+              local: document.getElementById("local-sala").value
+            }
+          });
+          formulario.reset();
+          await atualizarDados();
+          informar("Sala cadastrada.", "success");
+        } catch (erro) {
+          informar(erro.message, "error");
+        }
+      });
+      document.getElementById("form-procedimento").addEventListener("submit", async evento => {
+        evento.preventDefault();
+        const formulario = evento.currentTarget;
+        try {
+          await Baymax.api("/cirurgias/catalogo", {
+            method: "POST",
+            body: {
+              codigo: document.getElementById("codigo-procedimento").value,
+              nome: document.getElementById("nome-procedimento").value,
+              descricao: document.getElementById("descricao-procedimento").value
+            }
+          });
+          formulario.reset();
+          await atualizarDados();
+          informar("Procedimento cadastrado.", "success");
+        } catch (erro) {
+          informar(erro.message, "error");
+        }
+      });
+      document.getElementById("form-agendamento").addEventListener("submit", async evento => {
+        evento.preventDefault();
+        if (!pessoaAtual) {
+          informar("Pesquise e selecione um paciente.", "error");
+          return;
+        }
+        const data = document.getElementById("inicio").value;
+        const dataObjeto = new Date(data);
+        if (Number.isNaN(dataObjeto.getTime())) {
+          informar("Informe uma data e hora válidas.", "error");
+          return;
+        }
+        try {
+          await Baymax.api("/cirurgias", {
+            method: "POST",
+            body: {
+              pessoaId: pessoaAtual.id,
+              procedimentoId: Number(seletorProcedimento.value),
+              salaId: Number(seletorSala.value),
+              cirurgiao: seletorCirurgiao.value,
+              equipe: Array.from(seletorEquipe.selectedOptions, item => item.value),
+              inicio: dataObjeto.toISOString(),
+              duracaoMinutos: Number(document.getElementById("duracao").value),
+              internacaoId: seletorInternacao.value || undefined,
+              observacoes: document.getElementById("observacoes").value
+            }
+          });
+          evento.currentTarget.reset();
+          pessoaAtual = null;
+          pacienteSelecionado.textContent = "Nenhum paciente selecionado";
+          if (sessao.tipo === "medico") {
+            seletorCirurgiao.value = sessao.usuario;
+            seletorCirurgiao.disabled = true;
+          }
+          document.getElementById("duracao").value = 60;
+          await atualizarDados();
+          informar("Cirurgia agendada.", "success");
+        } catch (erro) {
+          informar(erro.message, "error");
+        }
+      });
+      document.getElementById("filtro-status").addEventListener("change", carregarAgenda);
+      document.getElementById("atualizar").addEventListener("click", atualizarDados);
+      atualizarDados();
+    }
+  </script>
+</body>
+</html>

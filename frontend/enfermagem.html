@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#087eac">
+  <title>Enfermagem - Baymax</title>
+  <link rel="stylesheet" href="css/system.css">
+</head>
+<body class="page-module page-nursing">
+  <main class="module-layout">
+    <header class="module-heading">
+      <div>
+        <span class="module-kicker">CUIDADOS DO PACIENTE INTERNADO</span>
+        <h1>Registros de enfermagem</h1>
+        <p>Documente evoluções, sinais vitais, balanço hídrico e procedimentos por internação.</p>
+      </div>
+    </header>
+
+    <section class="module-panel" aria-labelledby="titulo-paciente">
+      <h2 id="titulo-paciente">Internação ativa</h2>
+      <label class="module-field" for="internacao">Paciente / leito
+        <select id="internacao">
+          <option value="">Carregando internações...</option>
+        </select>
+      </label>
+      <p class="module-hint" id="resumo-internacao" role="status">Selecione uma internação para consultar e registrar cuidados.</p>
+    </section>
+
+    <p class="module-message" id="mensagem" role="status" aria-live="polite"></p>
+    <p class="module-hint">
+      As prescrições são registradas pelo médico; cada administração identifica o profissional,
+      respeita a quantidade prescrita e baixa o estoque uma única vez por envio.
+    </p>
+
+    <div class="module-columns nursing-columns">
+      <div class="nursing-column">
+        <section class="module-panel" id="painel-prescricao" aria-labelledby="titulo-prescricao" hidden>
+          <h2 id="titulo-prescricao">Prescrição para internação</h2>
+          <form class="module-form" id="form-prescricao">
+            <div class="module-fields">
+              <label class="module-field" for="medicacao-prescrita">Medicação cadastrada *
+                <select id="medicacao-prescrita" required>
+                  <option value="">Carregando medicações...</option>
+                </select>
+              </label>
+              <label class="module-field" for="dose-prescrita">Dose *
+                <input id="dose-prescrita" maxlength="60" placeholder="Ex.: 500 mg" required>
+              </label>
+              <label class="module-field" for="via-prescrita">Via *
+                <select id="via-prescrita" required>
+                  <option value="">Selecione</option>
+                  <option>Oral</option>
+                  <option>Intravenosa</option>
+                  <option>Intramuscular</option>
+                  <option>Subcutânea</option>
+                  <option>Tópica</option>
+                  <option>Inalatória</option>
+                  <option>Sublingual</option>
+                </select>
+              </label>
+              <label class="module-field" for="frequencia-prescrita">Frequência / orientação *
+                <input id="frequencia-prescrita" maxlength="100" placeholder="Ex.: conforme avaliação médica" required>
+              </label>
+              <label class="module-field" for="quantidade-prescrita">Unidades autorizadas *
+                <input id="quantidade-prescrita" type="number" min="1" max="1000" required>
+              </label>
+            </div>
+            <button type="submit">Registrar prescrição</button>
+          </form>
+        </section>
+
+        <section class="module-panel" aria-labelledby="titulo-evolucao">
+          <h2 id="titulo-evolucao">Evolução de enfermagem</h2>
+          <form class="module-form" id="form-evolucao">
+            <label class="module-field" for="evolucao">Registro *
+              <textarea id="evolucao" rows="5" maxlength="3000" required></textarea>
+            </label>
+            <button type="submit">Registrar evolução</button>
+          </form>
+          <div class="module-list" id="lista-evolucoes" aria-live="polite"></div>
+        </section>
+
+        <section class="module-panel" aria-labelledby="titulo-balanco">
+          <h2 id="titulo-balanco">Balanço hídrico</h2>
+          <p class="module-hint" id="totais-balanco">Entradas: — · Saídas: — · Saldo: — (últimas 24 h)</p>
+          <form class="module-form" id="form-balanco">
+            <div class="module-fields">
+              <label class="module-field" for="tipo-balanco">Movimento *
+                <select id="tipo-balanco" required>
+                  <option value="entrada">Entrada</option>
+                  <option value="saida">Saída</option>
+                </select>
+              </label>
+              <label class="module-field" for="item-balanco">Item / origem *
+                <input id="item-balanco" maxlength="100" required>
+              </label>
+              <label class="module-field" for="ml-balanco">Volume (mL) *
+                <input id="ml-balanco" type="number" min="1" max="10000" step="1" required>
+              </label>
+              <label class="module-field" for="observacao-balanco">Observação
+                <input id="observacao-balanco" maxlength="500">
+              </label>
+            </div>
+            <button type="submit">Registrar volume</button>
+          </form>
+          <div class="module-list" id="lista-balanco" aria-live="polite"></div>
+        </section>
+      </div>
+
+      <div class="nursing-column">
+        <section class="module-panel" aria-labelledby="titulo-prescricoes">
+          <h2 id="titulo-prescricoes">Prescrições e administrações</h2>
+          <div class="module-list" id="lista-prescricoes" aria-live="polite">
+            <p class="module-empty">Selecione uma internação ativa.</p>
+          </div>
+        </section>
+
+        <section class="module-panel" aria-labelledby="titulo-sinais">
+          <h2 id="titulo-sinais">Sinais vitais</h2>
+          <form class="module-form" id="form-sinais">
+            <div class="module-fields">
+              <label class="module-field" for="pressao">Pressão (mmHg)
+                <input id="pressao" inputmode="numeric" placeholder="120/80" maxlength="7">
+              </label>
+              <label class="module-field" for="temperatura">Temperatura (°C)
+                <input id="temperatura" type="number" step="0.1" min="30" max="45">
+              </label>
+              <label class="module-field" for="frequenciaCardiaca">Frequência cardíaca (bpm)
+                <input id="frequenciaCardiaca" type="number" min="20" max="250">
+              </label>
+              <label class="module-field" for="frequenciaRespiratoria">Frequência respiratória (irpm)
+                <input id="frequenciaRespiratoria" type="number" min="4" max="80">
+              </label>
+              <label class="module-field" for="saturacao">Saturação SpO₂ (%)
+                <input id="saturacao" type="number" min="50" max="100">
+              </label>
+              <label class="module-field" for="glicemia">Glicemia (mg/dL)
+                <input id="glicemia" type="number" min="20" max="1000">
+              </label>
+              <label class="module-field" for="peso">Peso (kg)
+                <input id="peso" type="number" min="0.5" max="400" step="0.1">
+              </label>
+            </div>
+            <button type="submit">Registrar sinais vitais</button>
+          </form>
+          <div class="module-list" id="lista-sinais" aria-live="polite"></div>
+        </section>
+
+        <section class="module-panel" aria-labelledby="titulo-procedimentos">
+          <h2 id="titulo-procedimentos">Procedimentos</h2>
+          <form class="module-form" id="form-procedimento">
+            <label class="module-field" for="procedimento">Procedimento realizado *
+              <input id="procedimento" maxlength="150" required>
+            </label>
+            <label class="module-field" for="observacao-procedimento">Observação
+              <textarea id="observacao-procedimento" rows="3" maxlength="1000"></textarea>
+            </label>
+            <button type="submit">Registrar procedimento</button>
+          </form>
+          <div class="module-list" id="lista-procedimentos" aria-live="polite"></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script>
+    const sessao = Baymax.iniciar(["medico", "enfermagem", "tecnico_enfermagem"]);
+    const seletorInternacao = document.getElementById("internacao");
+    const mensagem = document.getElementById("mensagem");
+    const resumoInternacao = document.getElementById("resumo-internacao");
+    const podePrescrever = sessao && ["admin", "medico"].includes(sessao.tipo);
+    const podeAdministrar = sessao && ["admin", "enfermagem", "tecnico_enfermagem"].includes(sessao.tipo);
+    let internacaoAtual = null;
+
+    function informar(texto, tipo = "") {
+      mensagem.textContent = texto;
+      mensagem.className = `module-message${tipo ? ` ${tipo}` : ""}`;
+    }
+
+    function criarRegistro(titulo, linhas) {
+      const item = document.createElement("article");
+      item.className = "module-record";
+      const heading = document.createElement("strong");
+      heading.textContent = titulo;
+      item.appendChild(heading);
+      linhas.filter(Boolean).forEach(linha => {
+        const detalhe = document.createElement("small");
+        detalhe.textContent = linha;
+        item.appendChild(detalhe);
+      });
+      return item;
+    }
+
+    function preencherLista(id, registros, montar) {
+      const lista = document.getElementById(id);
+      lista.replaceChildren();
+      if (!registros.length) {
+        lista.appendChild(Object.assign(document.createElement("p"), {
+          className: "module-empty",
+          textContent: "Nenhum registro nesta internação."
+        }));
+        return;
+      }
+      registros.forEach(registro => lista.appendChild(montar(registro)));
+    }
+
+    async function carregarInternacoes() {
+      try {
+        const internacoes = await Baymax.api("/internacoes?status=ativa");
+        seletorInternacao.replaceChildren();
+        seletorInternacao.add(new Option("Selecione uma internação ativa", ""));
+        internacoes.forEach(item => {
+          const local = item.leito
+            ? ` · Quarto ${item.leito.quarto}, leito ${item.leito.numero}`
+            : "";
+          seletorInternacao.add(new Option(
+            `${item.paciente?.nome || "Paciente"}${local}`,
+            item.id
+          ));
+        });
+        if (!internacoes.length) {
+          resumoInternacao.textContent = "Não há internações ativas.";
+        }
+      } catch (erro) {
+        informar(erro.message, "error");
+        seletorInternacao.replaceChildren(new Option("Não foi possível carregar", ""));
+      }
+    }
+
+    async function carregarRegistros() {
+      const id = Number(seletorInternacao.value);
+      internacaoAtual = id > 0 ? id : null;
+      if (!internacaoAtual) {
+        resumoInternacao.textContent = "Selecione uma internação para consultar e registrar cuidados.";
+        [
+          "lista-evolucoes", "lista-sinais", "lista-balanco", "lista-procedimentos"
+        ].forEach(listaId => preencherLista(listaId, [], () => null));
+        document.getElementById("totais-balanco").textContent =
+          "Entradas: — · Saídas: — · Saldo: — (últimas 24 h)";
+        return;
+      }
+
+      try {
+        const registros = await Baymax.api(`/enfermagem/registros/${internacaoAtual}`);
+        const ativa = await Baymax.api("/internacoes?status=ativa");
+        const internacao = ativa.find(item => Number(item.id) === internacaoAtual);
+        resumoInternacao.textContent = internacao
+          ? `${internacao.paciente?.nome || "Paciente"} · Quarto ${internacao.leito?.quarto || "—"} · Leito ${internacao.leito?.numero || "—"}`
+          : "Internação encerrada: consulta disponível, novos registros bloqueados.";
+        const prescricoesLista = document.getElementById("lista-prescricoes");
+        prescricoesLista.replaceChildren();
+        if (!registros.prescricoes.length) {
+          prescricoesLista.appendChild(Object.assign(document.createElement("p"), {
+            className: "module-empty",
+            textContent: "Nenhuma prescrição registrada nesta internação."
+          }));
+        }
+        registros.prescricoes.forEach(prescricao => {
+          const cartao = criarRegistro(
+            prescricao.medicacao?.nome || "Medicação não encontrada",
+            [
+              `Dose: ${prescricao.dose} · Via: ${prescricao.via} · Frequência: ${prescricao.frequencia}`,
+              `Prescrito por ${prescricao.medico} · ${Baymax.dataHora(prescricao.createdAt)}`,
+              `Administrado: ${prescricao.quantidadeAdministrada} de ${prescricao.quantidade} unidade(s)`,
+              prescricao.alergiaConfirmada ? "Alergia registrada e confirmada pelo médico." : ""
+            ]
+          );
+          if (podeAdministrar && prescricao.quantidadeAdministrada < prescricao.quantidade) {
+            let chaveAdministracao = null;
+            const quantidade = document.createElement("input");
+            quantidade.type = "number";
+            quantidade.min = "1";
+            quantidade.max = String(Math.min(
+              100,
+              prescricao.quantidade - prescricao.quantidadeAdministrada
+            ));
+            quantidade.value = "1";
+            quantidade.setAttribute("aria-label", `Unidades de ${prescricao.medicacao?.nome || "medicação"} a administrar`);
+            const administrar = document.createElement("button");
+            administrar.type = "button";
+            administrar.className = "module-secondary";
+            administrar.textContent = "Registrar administração";
+            administrar.addEventListener("click", async () => {
+              administrar.disabled = true;
+              quantidade.disabled = true;
+              if (!chaveAdministracao) {
+                chaveAdministracao = globalThis.crypto?.randomUUID
+                  ? globalThis.crypto.randomUUID()
+                  : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+              }
+              try {
+                await Baymax.api(`/prescricoes-internacao/${prescricao.id}/administrar`, {
+                  method: "POST",
+                  body: {
+                    quantidade: Number(quantidade.value),
+                    idempotencia: chaveAdministracao
+                  }
+                });
+                chaveAdministracao = null;
+                informar("Administração registrada e estoque atualizado.", "success");
+                await carregarRegistros();
+              } catch (erro) {
+                informar(erro.message, "error");
+              } finally {
+                administrar.disabled = false;
+                quantidade.disabled = false;
+              }
+            });
+            cartao.append(quantidade, administrar);
+          }
+          (prescricao.administracoes || []).forEach(administracao => {
+            cartao.appendChild(criarRegistro(
+              `${administracao.quantidade} unidade(s) administrada(s)`,
+              [
+                `Dose ${administracao.dose} · via ${administracao.via}`,
+                `${administracao.administradoPor} · ${Baymax.dataHora(administracao.createdAt)}`
+              ]
+            ));
+          });
+          prescricoesLista.appendChild(cartao);
+        });
+
+        preencherLista("lista-evolucoes", registros.evolucoes, item =>
+          criarRegistro(item.registro, [`${item.profissional} · ${Baymax.dataHora(item.createdAt)}`])
+        );
+        preencherLista("lista-sinais", registros.sinaisVitais, item =>
+          criarRegistro(`Sinais vitais · ${Baymax.dataHora(item.createdAt)}`, [
+            item.pressao && `Pressão: ${item.pressao}`,
+            item.temperatura !== null && `Temperatura: ${item.temperatura} °C`,
+            item.frequenciaCardiaca !== null && `FC: ${item.frequenciaCardiaca} bpm`,
+            item.frequenciaRespiratoria !== null && `FR: ${item.frequenciaRespiratoria} irpm`,
+            item.saturacao !== null && `SpO₂: ${item.saturacao}%`,
+            item.glicemia !== null && `Glicemia: ${item.glicemia} mg/dL`,
+            item.peso !== null && `Peso: ${item.peso} kg`,
+            `Registrado por ${item.profissional}`
+          ])
+        );
+        preencherLista("lista-balanco", registros.balancoHidrico, item =>
+          criarRegistro(`${item.tipo === "entrada" ? "Entrada" : "Saída"} · ${item.ml} mL · ${item.item}`, [
+            item.observacao,
+            `${item.profissional} · ${Baymax.dataHora(item.createdAt)}`
+          ])
+        );
+        preencherLista("lista-procedimentos", registros.procedimentos, item =>
+          criarRegistro(item.procedimento, [
+            item.observacao,
+            `${item.profissional} · ${Baymax.dataHora(item.createdAt)}`
+          ])
+        );
+        document.getElementById("totais-balanco").textContent =
+          `Entradas: ${registros.totais24h.entradaMl} mL · Saídas: ${registros.totais24h.saidaMl} mL · Saldo: ${registros.totais24h.saldoMl} mL (últimas 24 h)`;
+      } catch (erro) {
+        informar(erro.message, "error");
+      }
+    }
+
+    async function enviarFormulario(evento, endpoint, body) {
+      evento.preventDefault();
+      if (!internacaoAtual) {
+        informar("Selecione uma internação ativa.", "error");
+        return;
+      }
+      const formulario = evento.currentTarget;
+      const botao = formulario.querySelector('button[type="submit"]');
+      botao.disabled = true;
+      try {
+        await Baymax.api(endpoint, {
+          method: "POST",
+          body: { ...body(), internacaoId: internacaoAtual }
+        });
+        formulario.reset();
+        informar("Registro salvo.", "success");
+        await carregarRegistros();
+      } catch (erro) {
+        informar(erro.message, "error");
+      } finally {
+        botao.disabled = false;
+      }
+    }
+
+    if (sessao) {
+      document.getElementById("painel-prescricao").hidden = !podePrescrever;
+      seletorInternacao.addEventListener("change", carregarRegistros);
+      if (podePrescrever) {
+        Baymax.api("/lista-medicacoes").then(medicacoes => {
+          const seletor = document.getElementById("medicacao-prescrita");
+          seletor.replaceChildren(new Option("Selecione uma medicação", ""));
+          medicacoes.forEach(medicacao => seletor.add(new Option(
+            `${medicacao.nome} · estoque: ${medicacao.quantidade}`,
+            medicacao.id
+          )));
+        }).catch(erro => informar(erro.message, "error"));
+        document.getElementById("form-prescricao").addEventListener("submit", async evento => {
+          evento.preventDefault();
+          if (!internacaoAtual) {
+            informar("Selecione uma internação ativa.", "error");
+            return;
+          }
+          const formulario = evento.currentTarget;
+          const botao = formulario.querySelector('button[type="submit"]');
+          const body = {
+            medicacaoId: Number(document.getElementById("medicacao-prescrita").value),
+            dose: document.getElementById("dose-prescrita").value,
+            via: document.getElementById("via-prescrita").value,
+            frequencia: document.getElementById("frequencia-prescrita").value,
+            quantidade: Number(document.getElementById("quantidade-prescrita").value)
+          };
+          botao.disabled = true;
+          try {
+            await Baymax.api(`/internacoes/${internacaoAtual}/prescricoes`, {
+              method: "POST",
+              body
+            });
+            formulario.reset();
+            informar("Prescrição registrada.", "success");
+            await carregarRegistros();
+          } catch (erro) {
+            if (erro.message.startsWith("Alergia registrada:") &&
+                window.confirm(`${erro.message}\nDeseja confirmar esta prescrição?`)) {
+              try {
+                await Baymax.api(`/internacoes/${internacaoAtual}/prescricoes`, {
+                  method: "POST",
+                  body: { ...body, confirmarAlergia: true }
+                });
+                formulario.reset();
+                informar("Prescrição registrada com confirmação da alergia.", "success");
+                await carregarRegistros();
+              } catch (confirmacaoErro) {
+                informar(confirmacaoErro.message, "error");
+              }
+            } else {
+              informar(erro.message, "error");
+            }
+          } finally {
+            botao.disabled = false;
+          }
+        });
+      }
+      document.getElementById("form-evolucao").addEventListener("submit", evento =>
+        enviarFormulario(evento, "/enfermagem/evolucoes", () => ({
+          registro: document.getElementById("evolucao").value
+        }))
+      );
+      document.getElementById("form-sinais").addEventListener("submit", evento =>
+        enviarFormulario(evento, "/enfermagem/sinais-vitais", () => ({
+          pressao: document.getElementById("pressao").value,
+          temperatura: document.getElementById("temperatura").value,
+          frequenciaCardiaca: document.getElementById("frequenciaCardiaca").value,
+          frequenciaRespiratoria: document.getElementById("frequenciaRespiratoria").value,
+          saturacao: document.getElementById("saturacao").value,
+          glicemia: document.getElementById("glicemia").value,
+          peso: document.getElementById("peso").value
+        }))
+      );
+      document.getElementById("form-balanco").addEventListener("submit", evento =>
+        enviarFormulario(evento, "/enfermagem/balanco-hidrico", () => ({
+          tipo: document.getElementById("tipo-balanco").value,
+          item: document.getElementById("item-balanco").value,
+          ml: Number(document.getElementById("ml-balanco").value),
+          observacao: document.getElementById("observacao-balanco").value
+        }))
+      );
+      document.getElementById("form-procedimento").addEventListener("submit", evento =>
+        enviarFormulario(evento, "/enfermagem/procedimentos", () => ({
+          procedimento: document.getElementById("procedimento").value,
+          observacao: document.getElementById("observacao-procedimento").value
+        }))
+      );
+      carregarInternacoes().then(carregarRegistros);
+    }
+  </script>
+</body>
+</html>

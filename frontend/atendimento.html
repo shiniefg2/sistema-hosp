@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atendimento Baymax</title>
+    <link rel="stylesheet" href="css/style2.css">
+    <link rel="stylesheet" href="css/system.css">
+</head>
+
+<body class="page-atendimento">
+
+    <div class="container">
+        <h2>Atendimento Baymax</h2>
+
+        <input id="nome" placeholder="Nome" maxlength="150" autocomplete="off">
+
+        <input id="cpf" placeholder="000.000.000-00" maxlength="14"
+               inputmode="numeric" oninput="mascaraCPF(this)">
+
+        <input id="nome_mae" placeholder="Nome da mãe" maxlength="150">
+
+        <input id="endereco" placeholder="Endereço" maxlength="200">
+
+        <input id="telefone" placeholder="Telefone" maxlength="15"
+               inputmode="tel" oninput="mascaraTelefone(this)">
+
+        <input id="email" type="email" placeholder="Email" maxlength="150">
+
+        <input id="contato_emergencia" placeholder="Contato de emergência" maxlength="150">
+
+        <label for="alergias">Alergias (separe por vírgula)</label>
+        <textarea id="alergias" maxlength="1000" placeholder="Ex.: penicilina, látex"></textarea>
+
+        <label for="doencasPreexistentes">Doenças preexistentes</label>
+        <textarea id="doencasPreexistentes" maxlength="1000"></textarea>
+
+        <label for="historicoMedico">Histórico médico relevante</label>
+        <textarea id="historicoMedico" maxlength="2000"></textarea>
+
+        <label for="estado_civil">Estado civil</label>
+        <select id="estado_civil">
+            <option>Casado(a)</option>
+            <option>Separado(a)</option>
+            <option>Solteiro(a)</option>
+        </select>
+
+        <label for="sexo">Sexo</label>
+        <select id="sexo">
+            <option>Masculino</option>
+            <option>Feminino</option>
+        </select>
+
+        <label for="tipo">Plano de saúde</label>
+        <select id="tipo">
+            <option>Convenio</option>
+            <option>Particular</option>
+        </select>
+
+        <label for="foto">Foto (opcional)</label>
+        <input type="file" id="foto" accept="image/*">
+
+        <button id="btnCadastrar" onclick="cadastrar()">Cadastrar</button>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        const sessao = Baymax.iniciar(["atendimento"]);
+        const campos = {
+            nome: document.getElementById("nome"),
+            cpf: document.getElementById("cpf"),
+            nome_mae: document.getElementById("nome_mae"),
+            endereco: document.getElementById("endereco"),
+            telefone: document.getElementById("telefone"),
+            email: document.getElementById("email"),
+            contato_emergencia: document.getElementById("contato_emergencia"),
+            alergias: document.getElementById("alergias"),
+            doencasPreexistentes: document.getElementById("doencasPreexistentes"),
+            historicoMedico: document.getElementById("historicoMedico"),
+            estado_civil: document.getElementById("estado_civil"),
+            sexo: document.getElementById("sexo"),
+            tipo: document.getElementById("tipo"),
+            foto: document.getElementById("foto")
+        };
+
+        const btnCadastrar = document.getElementById("btnCadastrar");
+
+        function mascaraCPF(campo) {
+            let valor = campo.value.replace(/\D/g, "").substring(0, 11);
+
+            valor = valor.replace(/(\d{3})(\d)/, "$1.$2");
+            valor = valor.replace(/(\d{3})(\d)/, "$1.$2");
+            valor = valor.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+
+            campo.value = valor;
+        }
+
+        function mascaraTelefone(campo) {
+            let valor = campo.value.replace(/\D/g, "").substring(0, 11);
+
+            valor = valor.replace(/(\d{2})(\d)/, "($1) $2");
+
+            if (valor.length > 13) {
+                valor = valor.replace(/(\d{5})(\d)/, "$1-$2");
+            } else {
+                valor = valor.replace(/(\d{4})(\d)/, "$1-$2");
+            }
+
+            campo.value = valor;
+        }
+
+        // Reduz a foto (máx. 600px, JPEG) para não pesar no envio
+        function prepararFoto(arquivo) {
+            return new Promise((resolve, reject) => {
+                if (!arquivo) {
+                    resolve(null);
+                    return;
+                }
+
+                if (!arquivo.type.startsWith("image/")) {
+                    reject(new Error("O arquivo escolhido não é uma imagem."));
+                    return;
+                }
+
+                const url = URL.createObjectURL(arquivo);
+                const img = new Image();
+
+                img.onload = () => {
+                    const maximo = 600;
+                    const escala = Math.min(1, maximo / Math.max(img.width, img.height));
+
+                    const canvas = document.createElement("canvas");
+                    canvas.width = Math.round(img.width * escala);
+                    canvas.height = Math.round(img.height * escala);
+
+                    canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                    URL.revokeObjectURL(url);
+                    resolve(canvas.toDataURL("image/jpeg", 0.8));
+                };
+
+                img.onerror = () => {
+                    URL.revokeObjectURL(url);
+                    reject(new Error("Não foi possível ler a imagem."));
+                };
+
+                img.src = url;
+            });
+        }
+
+        function validar() {
+            const cpfRegex = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/;
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            const digitosTel = campos.telefone.value.replace(/\D/g, "").length;
+
+            if (campos.nome.value.trim() === "") return "Digite o nome.";
+            if (!cpfRegex.test(campos.cpf.value)) return "Digite o CPF no formato 000.000.000-00";
+            if (campos.nome_mae.value.trim() === "") return "Digite o nome da mãe.";
+            if (campos.endereco.value.trim() === "") return "Digite o endereço.";
+            if (digitosTel < 10) return "Digite o telefone completo, com DDD.";
+            if (!emailRegex.test(campos.email.value.trim())) return "Digite um email válido.";
+            if (campos.contato_emergencia.value.trim() === "") return "Digite o contato de emergência.";
+
+            return null;
+        }
+
+        async function cadastrar() {
+            const problema = validar();
+
+            if (problema) {
+                alert(problema);
+                return;
+            }
+
+            btnCadastrar.disabled = true;
+            btnCadastrar.textContent = "Enviando...";
+
+            try {
+                const foto = await prepararFoto(campos.foto.files[0]);
+
+                const resposta = await Baymax.fetch("/atendimento", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
+                    },
+                    body: JSON.stringify({
+                        nome: campos.nome.value.trim(),
+                        cpf: campos.cpf.value,
+                        nome_mae: campos.nome_mae.value.trim(),
+                        estado_civil: campos.estado_civil.value,
+                        sexo: campos.sexo.value,
+                        tipo: campos.tipo.value,
+                        endereco: campos.endereco.value.trim(),
+                        telefone: campos.telefone.value,
+                        email: campos.email.value.trim(),
+                        contato_emergencia: campos.contato_emergencia.value.trim(),
+                        alergias: campos.alergias.value.trim(),
+                        doencasPreexistentes: campos.doencasPreexistentes.value.trim(),
+                        historicoMedico: campos.historicoMedico.value.trim(),
+                        foto
+                    })
+                });
+
+                let dados = {};
+
+                try {
+                    dados = await resposta.json();
+                } catch {
+                    // resposta sem JSON: usa a mensagem padrão abaixo
+                }
+
+                if (!resposta.ok) {
+                    throw new Error(dados.erro || "Erro ao enviar paciente.");
+                }
+
+                alert("Paciente enviado para triagem!");
+
+                // Limpa o formulário para o próximo atendimento
+                Object.values(campos).forEach(campo => {
+                    if (campo.tagName === "INPUT") campo.value = "";
+                    if (campo.tagName === "SELECT") campo.selectedIndex = 0;
+                    if (campo.tagName === "TEXTAREA") campo.value = "";
+                });
+
+                campos.nome.focus();
+
+            } catch (erro) {
+                console.error(erro);
+                alert(erro.message || "Erro ao enviar o paciente para o servidor.");
+            } finally {
+                btnCadastrar.disabled = false;
+                btnCadastrar.textContent = "Cadastrar";
+            }
+        }
+    </script>
+
+</body>
+
+</html>

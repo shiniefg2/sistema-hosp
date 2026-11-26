@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#102d39">
+  <title>Acesso restrito - Baymax</title>
+  <link rel="stylesheet" href="css/system.css">
+</head>
+<body class="page-admin-login">
+  <main class="admin-login-card">
+    <img
+      class="admin-login-mark"
+      src="css/Captura de tela 2026-08-06 114854.png"
+      alt=""
+      width="44"
+      height="44"
+      aria-hidden="true"
+    >
+    <span class="admin-login-kicker">ÁREA RESTRITA</span>
+    <h1>Acesso administrativo</h1>
+    <p class="admin-login-description">Entre com uma conta autorizada de administrador</p>
+
+    <form id="form-admin-login">
+      <label class="admin-login-field" for="usuario-admin">Usuário
+        <input
+          id="usuario-admin"
+          name="usuario"
+          type="text"
+          autocomplete="username"
+          maxlength="100"
+          required
+        >
+      </label>
+      <label class="admin-login-field" for="senha-admin">Senha
+        <input
+          id="senha-admin"
+          name="senha"
+          type="password"
+          autocomplete="current-password"
+          required
+        >
+      </label>
+      <p id="erro-admin-login" class="admin-login-error" role="alert" aria-live="assertive"></p>
+      <button id="entrar-admin" type="submit">Entrar no painel</button>
+    </form>
+
+    <a class="admin-login-back" href="index.html">Voltar ao acesso geral</a>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script>
+    const formAdminLogin = document.getElementById("form-admin-login");
+    const usuarioAdmin = document.getElementById("usuario-admin");
+    const senhaAdmin = document.getElementById("senha-admin");
+    const erroAdminLogin = document.getElementById("erro-admin-login");
+    const entrarAdmin = document.getElementById("entrar-admin");
+
+    formAdminLogin.addEventListener("submit", async evento => {
+      evento.preventDefault();
+      if (entrarAdmin.disabled) return;
+
+      erroAdminLogin.textContent = "";
+      entrarAdmin.disabled = true;
+      entrarAdmin.textContent = "Verificando acesso...";
+
+      try {
+        const resposta = await fetch("/login/admin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            usuario: usuarioAdmin.value.trim(),
+            senha: senhaAdmin.value
+          })
+        });
+        const texto = await resposta.text();
+        let dados;
+        try {
+          dados = texto ? JSON.parse(texto) : {};
+        } catch {
+          throw new Error("Resposta inválida do servidor.");
+        }
+
+        if (!resposta.ok) {
+          throw new Error(dados.erro || "Usuário ou senha incorretos.");
+        }
+        if (dados.tipo !== "admin" || !dados.token) {
+          throw new Error("A conta não tem acesso administrativo.");
+        }
+
+        sessionStorage.setItem("usuario", JSON.stringify(dados));
+        location.replace("admin.html");
+      } catch (erro) {
+        erroAdminLogin.textContent =
+          erro.message || "Não foi possível conectar ao servidor.";
+      } finally {
+        entrarAdmin.disabled = false;
+        entrarAdmin.textContent = "Entrar no painel";
+      }
+    });
+  </script>
+</body>
+</html>

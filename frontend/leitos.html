@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#087eac">
+  <title>Internação e leitos - Baymax</title>
+  <link rel="stylesheet" href="css/system.css">
+</head>
+<body class="page-module">
+  <main class="module-layout">
+    <header class="module-heading">
+      <div>
+        <span class="module-kicker">GESTÃO HOSPITALAR</span>
+        <h1>Internação e leitos</h1>
+        <p>Consulte ocupação, registre admissões e transferências e acompanhe altas hospitalares.</p>
+      </div>
+      <button type="button" class="module-secondary" id="atualizar">Atualizar dados</button>
+    </header>
+
+    <p class="module-message" id="mensagem" role="status" aria-live="polite"></p>
+
+    <section class="module-panel" id="painel-admissao" aria-labelledby="titulo-admissao">
+      <h2 id="titulo-admissao">Admitir paciente</h2>
+      <form class="module-form" id="form-busca-paciente">
+        <div class="module-fields">
+          <label class="module-field" for="busca-paciente">Localizar paciente por nome ou CPF
+            <input id="busca-paciente" type="search" minlength="2" autocomplete="off" placeholder="Digite ao menos 2 caracteres">
+          </label>
+          <div class="module-field">
+            <span>Paciente selecionado</span>
+            <strong id="paciente-selecionado">Nenhum paciente selecionado</strong>
+          </div>
+        </div>
+        <div class="module-actions">
+          <button type="submit">Pesquisar pacientes</button>
+        </div>
+      </form>
+      <div class="module-list" id="resultados-pacientes" aria-live="polite"></div>
+      <form class="module-form" id="form-admissao">
+        <div class="module-fields">
+          <label class="module-field" for="leito-admissao">Leito disponível *
+            <select id="leito-admissao" required>
+              <option value="">Carregando leitos...</option>
+            </select>
+          </label>
+          <label class="module-field full" for="motivo-admissao">Motivo da internação *
+            <textarea id="motivo-admissao" rows="3" maxlength="1000" required></textarea>
+          </label>
+        </div>
+        <div class="module-actions">
+          <button type="submit">Registrar internação</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="module-panel" id="painel-cadastro-leito" aria-labelledby="titulo-cadastro-leito" hidden>
+      <h2 id="titulo-cadastro-leito">Cadastrar leito</h2>
+      <form class="module-form" id="form-leito">
+        <div class="module-fields">
+          <label class="module-field" for="quarto">Quarto *
+            <input id="quarto" maxlength="30" required>
+          </label>
+          <label class="module-field" for="numero-leito">Identificação do leito *
+            <input id="numero-leito" maxlength="30" required>
+          </label>
+          <label class="module-field" for="setor-leito">Setor / unidade *
+            <input id="setor-leito" maxlength="60" required>
+          </label>
+          <label class="module-field" for="tipo-leito">Tipo
+            <input id="tipo-leito" maxlength="40" value="Geral">
+          </label>
+        </div>
+        <div class="module-actions">
+          <button type="submit">Cadastrar leito</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="module-panel" aria-labelledby="titulo-leitos">
+      <h2 id="titulo-leitos">Ocupação dos leitos</h2>
+      <div class="module-list" id="lista-leitos" aria-live="polite">
+        <p class="module-empty">Carregando leitos...</p>
+      </div>
+    </section>
+
+    <section class="module-panel" aria-labelledby="titulo-internacoes">
+      <div class="module-heading">
+        <h2 id="titulo-internacoes">Internações</h2>
+        <label class="module-field" for="filtro-internacoes">Exibir
+          <select id="filtro-internacoes">
+            <option value="ativa">Ativas</option>
+            <option value="alta">Com alta</option>
+            <option value="todas">Todas</option>
+          </select>
+        </label>
+      </div>
+      <div class="module-list" id="lista-internacoes" aria-live="polite">
+        <p class="module-empty">Carregando internações...</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script>
+    const sessao = Baymax.iniciar(["medico", "enfermagem", "tecnico_enfermagem"]);
+    const podeAdmitir = sessao && ["admin", "medico", "enfermagem"].includes(sessao.tipo);
+    const podeDarAlta = sessao && ["admin", "medico"].includes(sessao.tipo);
+    const podeGerenciarLeitos = sessao && sessao.tipo === "admin";
+    const mensagem = document.getElementById("mensagem");
+    const painelAdmissao = document.getElementById("painel-admissao");
+    const painelCadastroLeito = document.getElementById("painel-cadastro-leito");
+    const pacienteSelecionado = document.getElementById("paciente-selecionado");
+    const resultadosPacientes = document.getElementById("resultados-pacientes");
+    const listaLeitos = document.getElementById("lista-leitos");
+    const listaInternacoes = document.getElementById("lista-internacoes");
+    const leitoAdmissao = document.getElementById("leito-admissao");
+    let pessoaAtual = null;
+    let leitosAtuais = [];
+
+    function informar(texto, tipo = "") {
+      mensagem.textContent = texto;
+      mensagem.className = `module-message${tipo ? ` ${tipo}` : ""}`;
+    }
+
+    function dataHora(valor) {
+      return Baymax.dataHora(valor);
+    }
+
+    function botao(rotulo, acao, classe = "module-secondary") {
+      const elemento = document.createElement("button");
+      elemento.type = "button";
+      elemento.className = classe;
+      elemento.textContent = rotulo;
+      elemento.addEventListener("click", acao);
+      return elemento;
+    }
+
+    async function carregarLeitos() {
+      leitosAtuais = await Baymax.api("/leitos");
+      listaLeitos.replaceChildren();
+      leitoAdmissao.replaceChildren();
+      leitoAdmissao.add(new Option("Selecione um leito", ""));
+
+      const disponiveis = leitosAtuais.filter(leito => leito.status === "disponivel");
+      disponiveis.forEach(leito => {
+        leitoAdmissao.add(new Option(
+          `Quarto ${leito.quarto} · Leito ${leito.numero} · ${leito.setor}`,
+          leito.id
+        ));
+      });
+
+      if (!leitosAtuais.length) {
+        listaLeitos.appendChild(Object.assign(document.createElement("p"), {
+          className: "module-empty",
+          textContent: "Nenhum leito cadastrado."
+        }));
+        return;
+      }
+
+      leitosAtuais.forEach(leito => {
+        const cartao = document.createElement("article");
+        cartao.className = "module-record";
+        const titulo = document.createElement("strong");
+        titulo.textContent = `Quarto ${leito.quarto} · Leito ${leito.numero}`;
+        const detalhe = document.createElement("small");
+        detalhe.textContent = `${leito.setor} · ${leito.tipo || "Geral"}`;
+        const estado = document.createElement("span");
+        estado.className = "module-chip";
+        estado.textContent = leito.status === "manutencao"
+          ? "Em manutenção"
+          : leito.status === "ocupado" ? `Ocupado · ${leito.paciente?.nome || "Paciente"}` : "Disponível";
+        cartao.append(titulo, detalhe, estado);
+
+        if (podeGerenciarLeitos && leito.status !== "ocupado") {
+          cartao.appendChild(botao(
+            leito.status === "manutencao" ? "Marcar disponível" : "Enviar para manutenção",
+            async () => {
+              const status = leito.status === "manutencao" ? "disponivel" : "manutencao";
+              try {
+                await Baymax.api(`/leitos/${leito.id}`, { method: "PATCH", body: { status } });
+                await atualizarDados();
+                informar("Status do leito atualizado.", "success");
+              } catch (erro) {
+                informar(erro.message, "error");
+              }
+            }
+          ));
+        }
+        listaLeitos.appendChild(cartao);
+      });
+    }
+
+    async function pesquisarPacientes(evento) {
+      evento.preventDefault();
+      const busca = document.getElementById("busca-paciente").value.trim();
+      resultadosPacientes.replaceChildren();
+      if (busca.length < 2) {
+        informar("Digite ao menos 2 caracteres para pesquisar.", "error");
+        return;
+      }
+      try {
+        const pessoas = await Baymax.api(`/internacoes/pacientes?busca=${encodeURIComponent(busca)}`);
+        if (!pessoas.length) {
+          resultadosPacientes.appendChild(Object.assign(document.createElement("p"), {
+            className: "module-empty",
+            textContent: "Nenhum paciente localizado."
+          }));
+          return;
+        }
+        pessoas.forEach(pessoa => {
+          resultadosPacientes.appendChild(botao(
+            `${pessoa.nome} · CPF ${pessoa.cpf}`,
+            () => {
+              pessoaAtual = pessoa;
+              pacienteSelecionado.textContent = `${pessoa.nome} · CPF ${pessoa.cpf}`;
+              resultadosPacientes.replaceChildren();
+              informar("");
+            },
+            "module-record"
+          ));
+        });
+      } catch (erro) {
+        informar(erro.message, "error");
+      }
+    }
+
+    async function carregarInternacoes() {
+      const status = document.getElementById("filtro-internacoes").value;
+      const internacoes = await Baymax.api(`/internacoes?status=${encodeURIComponent(status)}`);
+      listaInternacoes.replaceChildren();
+      if (!internacoes.length) {
+        listaInternacoes.appendChild(Object.assign(document.createElement("p"), {
+          className: "module-empty",
+          textContent: "Nenhuma internação neste filtro."
+        }));
+        return;
+      }
+
+      internacoes.forEach(internacao => {
+        const cartao = document.createElement("article");
+        cartao.className = "module-record";
+        const titulo = document.createElement("strong");
+        titulo.textContent = internacao.paciente?.nome || "Paciente";
+        const local = document.createElement("small");
+        local.textContent = internacao.leito
+          ? `Quarto ${internacao.leito.quarto} · Leito ${internacao.leito.numero} · ${internacao.leito.setor}`
+          : "Leito não identificado";
+        const inicio = document.createElement("small");
+        inicio.textContent = `Admissão: ${dataHora(internacao.admitidoEm)} · Responsável: ${internacao.admitidoPor}`;
+        const motivo = document.createElement("small");
+        motivo.textContent = `Motivo: ${internacao.motivo}`;
+        const estado = document.createElement("span");
+        estado.className = "module-chip";
+        estado.textContent = internacao.status === "ativa"
+          ? "Internação ativa"
+          : `Alta: ${dataHora(internacao.altaEm)}`;
+        cartao.append(titulo, local, inicio, motivo, estado);
+
+        if (internacao.status === "ativa" && (podeAdmitir || podeDarAlta)) {
+          const acoes = document.createElement("div");
+          acoes.className = "module-actions";
+
+          if (podeAdmitir) {
+            const destino = document.createElement("select");
+            destino.setAttribute("aria-label", `Leito de destino para ${internacao.paciente?.nome || "paciente"}`);
+            destino.add(new Option("Selecionar leito de destino", ""));
+            leitosAtuais
+              .filter(leito => leito.status === "disponivel")
+              .forEach(leito => destino.add(new Option(
+                `Quarto ${leito.quarto} · Leito ${leito.numero}`,
+                leito.id
+              )));
+            const motivoTransferencia = document.createElement("input");
+            motivoTransferencia.maxLength = 500;
+            motivoTransferencia.placeholder = "Motivo da transferência";
+            motivoTransferencia.setAttribute("aria-label", "Motivo da transferência");
+            const transferir = botao("Transferir", async () => {
+              if (!destino.value) {
+                informar("Selecione um leito disponível para transferir.", "error");
+                return;
+              }
+              try {
+                await Baymax.api(`/internacoes/${internacao.id}/transferencia`, {
+                  method: "POST",
+                  body: { leitoId: Number(destino.value), motivo: motivoTransferencia.value }
+                });
+                await atualizarDados();
+                informar("Transferência registrada.", "success");
+              } catch (erro) {
+                informar(erro.message, "error");
+              }
+            });
+            acoes.append(destino, motivoTransferencia, transferir);
+          }
+
+          if (podeDarAlta) {
+            const resumoAlta = document.createElement("input");
+            resumoAlta.maxLength = 1000;
+            resumoAlta.placeholder = "Resumo/motivo da alta";
+            resumoAlta.setAttribute("aria-label", "Resumo da alta");
+            acoes.append(
+              resumoAlta,
+              botao("Registrar alta", async () => {
+                if (!resumoAlta.value.trim()) {
+                  informar("Informe o resumo ou motivo da alta.", "error");
+                  return;
+                }
+                try {
+                  await Baymax.api(`/internacoes/${internacao.id}/alta`, {
+                    method: "POST",
+                    body: { motivo: resumoAlta.value }
+                  });
+                  await atualizarDados();
+                  informar("Alta hospitalar registrada e leito liberado.", "success");
+                } catch (erro) {
+                  informar(erro.message, "error");
+                }
+              })
+            );
+          }
+          cartao.appendChild(acoes);
+        }
+        listaInternacoes.appendChild(cartao);
+      });
+    }
+
+    async function atualizarDados() {
+      try {
+        await carregarLeitos();
+        await carregarInternacoes();
+        if (podeAdmitir) {
+          leitoAdmissao.disabled = false;
+          document.getElementById("form-admissao").hidden = false;
+        }
+      } catch (erro) {
+        informar(erro.message, "error");
+      }
+    }
+
+    if (sessao) {
+      painelAdmissao.hidden = !podeAdmitir;
+      painelCadastroLeito.hidden = !podeGerenciarLeitos;
+      document.getElementById("form-busca-paciente").addEventListener("submit", pesquisarPacientes);
+      document.getElementById("form-leito").addEventListener("submit", async evento => {
+        evento.preventDefault();
+        const form = evento.currentTarget;
+        const dados = {
+          quarto: document.getElementById("quarto").value,
+          numero: document.getElementById("numero-leito").value,
+          setor: document.getElementById("setor-leito").value,
+          tipo: document.getElementById("tipo-leito").value
+        };
+        try {
+          await Baymax.api("/leitos", { method: "POST", body: dados });
+          form.reset();
+          document.getElementById("tipo-leito").value = "Geral";
+          await atualizarDados();
+          informar("Leito cadastrado.", "success");
+        } catch (erro) {
+          informar(erro.message, "error");
+        }
+      });
+      document.getElementById("form-admissao").addEventListener("submit", async evento => {
+        evento.preventDefault();
+        if (!pessoaAtual) {
+          informar("Pesquise e selecione um paciente antes de registrar a internação.", "error");
+          return;
+        }
+        try {
+          await Baymax.api("/internacoes", {
+            method: "POST",
+            body: {
+              pessoaId: pessoaAtual.id,
+              leitoId: Number(leitoAdmissao.value),
+              motivo: document.getElementById("motivo-admissao").value
+            }
+          });
+          evento.currentTarget.reset();
+          pessoaAtual = null;
+          pacienteSelecionado.textContent = "Nenhum paciente selecionado";
+          await atualizarDados();
+          informar("Internação registrada.", "success");
+        } catch (erro) {
+          informar(erro.message, "error");
+        }
+      });
+      document.getElementById("filtro-internacoes").addEventListener("change", carregarInternacoes);
+      document.getElementById("atualizar").addEventListener("click", atualizarDados);
+      atualizarDados();
+    }
+  </script>
+</body>
+</html>

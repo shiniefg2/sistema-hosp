@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Relatórios - Baymax</title>
+
+  <style>
+    body.page-rel {
+      min-height: 100vh;
+      padding: 0 var(--page-pad) 32px;
+      background: var(--app-background);
+    }
+
+    .rel { display: grid; gap: 20px; width: min(1300px, 100%); margin: 0 auto; }
+
+    .rel-topo { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+    .rel-topo h1 { font-size: 22px; font-weight: 650; }
+    .rel-topo p { margin-top: 5px; color: var(--app-muted); font-size: 12px; }
+    .rel-controles { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+    .cartoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+
+    .cartao {
+      display: grid;
+      gap: 8px;
+      padding: 16px;
+      border: 1px solid var(--app-border);
+      border-left: 4px solid var(--app-primary);
+      border-radius: var(--app-radius);
+      background: var(--app-surface);
+      box-shadow: var(--app-shadow);
+    }
+
+    .cartao span { color: var(--app-muted); font-size: 12px; }
+    .cartao strong { font-size: 26px; line-height: 1; }
+    .cartao small { color: var(--app-muted); font-size: 11px; }
+
+    .grade { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
+
+    .painel {
+      min-width: 0;
+      padding: 22px;
+      border: 1px solid var(--app-border);
+      border-radius: var(--app-radius);
+      background: var(--app-surface);
+      box-shadow: var(--app-shadow);
+    }
+
+    .painel h2 { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid #e7ecef; font-size: 16px; font-weight: 650; }
+
+    .barras { display: flex; align-items: flex-end; gap: 4px; height: 170px; padding-top: 10px; }
+    .barra { display: flex; flex: 1; min-width: 0; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; height: 100%; }
+    .barra div { width: 100%; min-height: 2px; border-radius: 4px 4px 0 0; background: var(--app-primary); }
+    .barra b { font-size: 10px; font-weight: 600; }
+    .barra span { color: var(--app-muted); font-size: 9px; white-space: nowrap; }
+
+    .hbarra { display: grid; grid-template-columns: 110px 1fr 40px; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 13px; }
+    .hbarra .trilho { height: 14px; border-radius: 7px; background: #eef2f4; overflow: hidden; }
+    .hbarra .trilho div { height: 100%; border-radius: 7px; background: var(--app-primary); }
+    .hbarra .verde div { background: #2e9d5b; }
+    .hbarra .amarelo div { background: #e6a12b; }
+    .hbarra .vermelho div { background: #c84b4b; }
+    .hbarra strong { text-align: right; }
+
+    .tabela { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { padding: 8px; border-bottom: 2px solid #e7ecef; color: var(--app-muted); font-size: 11px; text-align: left; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+    td { padding: 9px 8px; border-bottom: 1px solid #eef2f4; }
+    tr:last-child td { border-bottom: none; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .vazio { padding: 16px; color: var(--app-muted); font-size: 13px; text-align: center; }
+    .aviso { color: var(--app-muted); font-size: 11px; line-height: 1.5; }
+    #mensagem { font-size: 13px; color: #c62828; }
+
+    @media (max-width: 900px) { .grade { grid-template-columns: 1fr; } }
+    @media (max-width: 520px) { .hbarra { grid-template-columns: 80px 1fr 34px; } }
+
+    @media print {
+      .baymax-nav, .rel-controles { display: none !important; }
+      .painel, .cartao { box-shadow: none; break-inside: avoid; }
+    }
+  </style>
+  <link rel="stylesheet" href="css/system.css">
+</head>
+
+<body class="page-rel">
+  <main class="rel">
+    <div class="rel-topo">
+      <div>
+        <h1>Relatórios e indicadores</h1>
+        <p id="atualizacao" role="status" aria-live="polite">Carregando...</p>
+      </div>
+
+      <div class="rel-controles">
+        <label for="periodo" style="font-size:13px">Período:</label>
+        <select id="periodo">
+          <option value="hoje">Hoje</option>
+          <option value="7" selected>Últimos 7 dias</option>
+          <option value="30">Últimos 30 dias</option>
+        </select>
+        <button type="button" id="btn-imprimir">Imprimir</button>
+        <button type="button" id="btn-backup">Baixar backup dos dados</button>
+      </div>
+    </div>
+
+    <p id="mensagem" role="alert"></p>
+
+    <section class="cartoes" aria-label="Resumo do período">
+      <article class="cartao"><span>Atendimentos iniciados</span><strong id="c-atend">—</strong></article>
+      <article class="cartao"><span>Altas concedidas</span><strong id="c-altas">—</strong></article>
+      <article class="cartao"><span>Em atendimento agora</span><strong id="c-andamento">—</strong></article>
+      <article class="cartao"><span>Espera até o médico (média)</span><strong id="c-medico">—</strong><small id="c-triagem"></small></article>
+      <article class="cartao"><span>Permanência até a alta (média)</span><strong id="c-perm">—</strong></article>
+    </section>
+
+    <div class="grade">
+      <section class="painel" aria-labelledby="t-serie">
+        <h2 id="t-serie">Atendimentos por dia</h2>
+        <div id="serie" class="barras"></div>
+      </section>
+
+      <section class="painel" aria-labelledby="t-risco">
+        <h2 id="t-risco">Classificação de risco na triagem</h2>
+        <div id="risco"></div>
+        <h2 style="margin-top:18px">Espera média até o médico, por risco</h2>
+        <div id="espera-risco"></div>
+        <p class="aviso">Referência de tempo máximo usada nas filas: vermelho 10 min, amarelo 60 min, verde 120 min.</p>
+      </section>
+
+      <section class="painel" aria-labelledby="t-med">
+        <h2 id="t-med">Medicações mais usadas (saídas do estoque)</h2>
+        <div id="med"></div>
+        <h2 style="margin-top:18px">Estoque baixo ou esgotado</h2>
+        <div id="critico"></div>
+      </section>
+
+      <section class="painel" aria-labelledby="t-altas">
+        <h2 id="t-altas">Altas por tipo</h2>
+        <div id="altas"></div>
+        <h2 style="margin-top:18px">Pacientes em atendimento por etapa</h2>
+        <div id="etapas"></div>
+      </section>
+    </div>
+
+    <section class="painel" aria-labelledby="t-func">
+      <h2 id="t-func">Atividade por funcionário</h2>
+      <div class="tabela">
+        <table>
+          <thead>
+            <tr>
+              <th>Funcionário</th>
+              <th class="num">Cadastros</th>
+              <th class="num">Triagens</th>
+              <th class="num">Consultas</th>
+              <th class="num">Medicações</th>
+              <th class="num">Altas</th>
+              <th class="num">Estoque</th>
+              <th class="num">Total</th>
+            </tr>
+          </thead>
+          <tbody id="func"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script>
+    const sessao = Baymax.iniciar(["gestor"]);
+    const $ = id => document.getElementById(id);
+
+    const ROTULO_ETAPA = {
+      aguardando_triagem: "Aguardando triagem",
+      aguardando_medico: "Aguardando médico",
+      aguardando_medicacao: "Aguardando medicação",
+      aguardando_alta: "Aguardando alta"
+    };
+
+    const ROTULO_ALTA = {
+      "Alta Curado": "Alta médica (melhorado/curado)",
+      "Alta a Pedido": "Alta a pedido",
+      Transferencia: "Transferência",
+      Evasao: "Evasão/desistência"
+    };
+
+    function el(tag, classe, texto) {
+      const e = document.createElement(tag);
+      if (classe) e.className = classe;
+      if (texto !== undefined) e.textContent = texto;
+      return e;
+    }
+
+    function vazio(texto) {
+      return el("p", "vazio", texto);
+    }
+
+    // Barras horizontais: itens = [{rotulo, valor, classe?}]
+    function barrasH(destino, itens, sufixo = "") {
+      if (!itens.length) {
+        destino.replaceChildren(vazio("Sem dados no período."));
+        return;
+      }
+
+      const maior = Math.max(...itens.map(i => i.valor), 1);
+
+      destino.replaceChildren(...itens.map(i => {
+        const linha = el("div", "hbarra");
+        const trilho = el("div", "trilho " + (i.classe || ""));
+        const preenchido = el("div");
+        preenchido.style.width = `${(i.valor / maior) * 100}%`;
+        trilho.appendChild(preenchido);
+        linha.append(el("span", "", i.rotulo), trilho, el("strong", "", `${i.valor}${sufixo}`));
+        return linha;
+      }));
+    }
+
+    function render(d) {
+      $("c-atend").textContent = d.totais.atendimentos;
+      $("c-altas").textContent = d.totais.altas;
+      $("c-andamento").textContent = d.totais.emAndamento;
+      $("c-medico").textContent = Baymax.textoDuracao(d.tempos.esperaMedico);
+      $("c-triagem").textContent = `Espera até a triagem: ${Baymax.textoDuracao(d.tempos.esperaTriagem)}`;
+      $("c-perm").textContent = Baymax.textoDuracao(d.tempos.permanencia);
+
+      $("t-serie").textContent = d.periodo === "hoje" ? "Atendimentos por hora (hoje)" : "Atendimentos por dia";
+      const maior = Math.max(...d.serie.map(s => s.total), 1);
+
+      $("serie").replaceChildren(...d.serie.map(s => {
+        const col = el("div", "barra");
+        const barra = el("div");
+        barra.style.height = `${(s.total / maior) * 100}%`;
+        barra.title = `${s.rotulo}: ${s.total}`;
+        col.append(el("b", "", s.total ? String(s.total) : ""), barra, el("span", "", s.rotulo));
+        return col;
+      }));
+
+      barrasH($("risco"), [
+        { rotulo: "Vermelho", valor: d.risco.vermelho, classe: "vermelho" },
+        { rotulo: "Amarelo", valor: d.risco.amarelo, classe: "amarelo" },
+        { rotulo: "Verde", valor: d.risco.verde, classe: "verde" }
+      ]);
+
+      const er = d.tempos.esperaMedicoPorRisco;
+      barrasH($("espera-risco"), ["vermelho", "amarelo", "verde"]
+        .filter(r => er[r] !== null)
+        .map(r => ({ rotulo: r[0].toUpperCase() + r.slice(1), valor: er[r], classe: r })), " min");
+
+      barrasH($("med"), d.medicacoesMaisUsadas.map(m => ({ rotulo: m.nome, valor: m.quantidade })), "");
+
+      $("critico").replaceChildren(...(d.estoqueCritico.length
+        ? d.estoqueCritico.map(m => {
+            const p = el("p", "", `${m.nome}: ${m.quantidade <= 0 ? "esgotado" : m.quantidade + " un."}`);
+            p.style.cssText = `padding:6px 0;font-size:13px;color:${m.quantidade <= 0 ? "#c62828" : "#b36b00"};font-weight:600`;
+            return p;
+          })
+        : [vazio("Nenhum item com estoque baixo.")]));
+
+      barrasH($("altas"), d.altasPorTipo.map(a => ({ rotulo: ROTULO_ALTA[a.tipo] || a.tipo, valor: a.total })));
+
+      barrasH($("etapas"), Object.entries(d.emAndamento).map(([e, n]) => ({ rotulo: ROTULO_ETAPA[e] || e, valor: n })));
+
+      $("func").replaceChildren(...(d.funcionarios.length
+        ? d.funcionarios.map(f => {
+            const tr = el("tr");
+            tr.appendChild(el("td", "", f.nome));
+            [f.cadastros, f.triagens, f.consultas, f.medicacoes, f.altas, f.estoque, f.total].forEach((n, i) => {
+              const td = el("td", "num", String(n));
+              if (i === 6) td.style.fontWeight = "700";
+              tr.appendChild(td);
+            });
+            return tr;
+          })
+        : [(() => { const tr = el("tr"); const td = el("td", "vazio", "Nenhuma atividade registrada no período."); td.colSpan = 8; tr.appendChild(td); return tr; })()]));
+    }
+
+    async function carregar() {
+      $("mensagem").textContent = "";
+
+      try {
+        const dados = await Baymax.api("/relatorios/resumo?periodo=" + encodeURIComponent($("periodo").value));
+        render(dados);
+        $("atualizacao").textContent = "Gerado às " +
+          new Intl.DateTimeFormat("pt-BR", { timeStyle: "medium" }).format(new Date()) +
+          " · horários de Brasília";
+      } catch (erro) {
+        $("atualizacao").textContent = "";
+        $("mensagem").textContent = erro.message;
+      }
+    }
+
+    // O backup precisa do token de login, então é baixado via fetch
+    async function baixarBackup() {
+      try {
+        const resposta = await Baymax.fetch("/backup");
+        if (!resposta.ok) throw new Error("Não foi possível gerar o backup.");
+
+        const blob = await resposta.blob();
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `baymax-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(link.href);
+      } catch (erro) {
+        $("mensagem").textContent = erro.message;
+      }
+    }
+
+    if (sessao) {
+      $("btn-backup").hidden = sessao.tipo !== "admin";
+      $("periodo").addEventListener("change", carregar);
+      $("btn-imprimir").addEventListener("click", () => window.print());
+      $("btn-backup").addEventListener("click", baixarBackup);
+      carregar();
+      setInterval(() => { if (!document.hidden) carregar(); }, 30000);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0b141a">
+  <title>Visão geral - Baymax</title>
+  <link rel="stylesheet" href="css/system.css">
+</head>
+<body class="page-dashboard">
+  <main class="dashboard-layout">
+    <header class="dashboard-hero">
+      <div>
+        <span class="dashboard-kicker">CENTRAL DE OPERAÇÕES</span>
+        <h1 id="boas-vindas">Visão geral</h1>
+        <p id="data-atual"></p>
+      </div>
+      <aside class="dashboard-demo-note">
+        Ambiente de demonstração. Não use dados reais de pacientes nem para decisões clínicas.
+      </aside>
+    </header>
+
+    <section class="dashboard-overview" aria-label="Resumo">
+      <article class="dashboard-metric">
+        <span>Módulos disponíveis para seu perfil</span>
+        <strong id="total-modulos">—</strong>
+      </article>
+      <article class="dashboard-metric">
+        <span>Plantões programados para hoje</span>
+        <strong id="total-plantoes">—</strong>
+      </article>
+    </section>
+
+    <section class="dashboard-section" aria-labelledby="titulo-modulos">
+      <div class="dashboard-section-heading">
+        <div>
+          <h2 id="titulo-modulos">Acesso rápido</h2>
+          <p>Os atalhos abaixo respeitam o setor da sua conta.</p>
+        </div>
+      </div>
+      <nav class="dashboard-module-grid" id="modulos" aria-label="Módulos disponíveis"></nav>
+    </section>
+
+    <section class="dashboard-section" aria-labelledby="titulo-plantoes">
+      <div class="dashboard-section-heading">
+        <div>
+          <h2 id="titulo-plantoes">Plantões de hoje</h2>
+          <p>Escala cadastrada para a data atual.</p>
+        </div>
+        <button type="button" class="module-secondary" id="atualizar-plantoes">Atualizar</button>
+      </div>
+      <div class="dashboard-shift-list" id="lista-plantoes" aria-live="polite">
+        <p class="dashboard-message">Carregando plantões...</p>
+      </div>
+      <p class="dashboard-message" id="mensagem-plantoes" role="status"></p>
+    </section>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script>
+    const sessao = Baymax.iniciar(Object.keys(Baymax.SETORES));
+    const boasVindas = document.getElementById("boas-vindas");
+    const listaPlantoes = document.getElementById("lista-plantoes");
+    const mensagemPlantoes = document.getElementById("mensagem-plantoes");
+    const botaoAtualizar = document.getElementById("atualizar-plantoes");
+
+    function chaveDataAtual() {
+      const agora = new Date();
+      const ano = agora.getFullYear();
+      const mes = String(agora.getMonth() + 1).padStart(2, "0");
+      const dia = String(agora.getDate()).padStart(2, "0");
+      return `${ano}-${mes}-${dia}`;
+    }
+
+    function montarAtalhos(tipo) {
+      const container = document.getElementById("modulos");
+      const modulos = Baymax.modulosVisiveis(tipo)
+        .filter(modulo => !["dashboard.html", "ajuda.html"].includes(modulo.href));
+
+      container.replaceChildren();
+      document.getElementById("total-modulos").textContent = String(modulos.length);
+
+      modulos.forEach(modulo => {
+        const link = document.createElement("a");
+        link.className = "dashboard-module-card";
+        link.href = modulo.href;
+        if (modulo.novaAba) {
+          link.target = "_blank";
+          link.rel = "noopener";
+        }
+
+        const icone = document.createElement("span");
+        icone.className = "dashboard-module-icon";
+        icone.setAttribute("aria-hidden", "true");
+        icone.textContent = modulo.icone;
+
+        const texto = document.createElement("span");
+        const nome = document.createElement("strong");
+        nome.textContent = modulo.rotulo;
+        const descricao = document.createElement("small");
+        descricao.textContent = "Abrir módulo";
+        texto.append(nome, descricao);
+        link.append(icone, texto);
+        container.appendChild(link);
+      });
+    }
+
+    function renderizarPlantoes(plantoes) {
+      const doDia = plantoes.filter(plantao => plantao.data === chaveDataAtual());
+      document.getElementById("total-plantoes").textContent = String(doDia.length);
+      listaPlantoes.replaceChildren();
+      mensagemPlantoes.textContent = "";
+      mensagemPlantoes.classList.remove("error");
+
+      if (!doDia.length) {
+        const vazio = document.createElement("p");
+        vazio.className = "dashboard-message";
+        vazio.textContent = "Nenhum plantão cadastrado para hoje.";
+        listaPlantoes.appendChild(vazio);
+        return;
+      }
+
+      doDia.forEach(plantao => {
+        const item = document.createElement("article");
+        item.className = "dashboard-shift";
+
+        const profissional = document.createElement("div");
+        const nome = document.createElement("strong");
+        nome.textContent = plantao.profissional || "Profissional não informado";
+        const setor = document.createElement("span");
+        setor.textContent = plantao.setor || "Setor não informado";
+        profissional.append(nome, setor);
+
+        const horario = document.createElement("time");
+        horario.textContent = `${plantao.inicio || "—"} – ${plantao.fim || "—"}`;
+        item.append(profissional, horario);
+        listaPlantoes.appendChild(item);
+      });
+    }
+
+    async function carregarPlantoes() {
+      botaoAtualizar.disabled = true;
+      mensagemPlantoes.textContent = "Atualizando escala...";
+      mensagemPlantoes.classList.remove("error");
+
+      try {
+        const plantoes = await Baymax.api("/plantoes");
+        if (!Array.isArray(plantoes)) {
+          throw new Error("A escala retornou dados inválidos.");
+        }
+        renderizarPlantoes(plantoes);
+      } catch (erro) {
+        console.error("Erro ao carregar plantões:", erro);
+        listaPlantoes.replaceChildren();
+        document.getElementById("total-plantoes").textContent = "—";
+        mensagemPlantoes.textContent = erro.message || "Não foi possível carregar a escala.";
+        mensagemPlantoes.classList.add("error");
+      } finally {
+        botaoAtualizar.disabled = false;
+      }
+    }
+
+    if (sessao) {
+      const nome = sessao.nome || sessao.usuario;
+      boasVindas.textContent = `Olá, ${nome}`;
+      document.getElementById("data-atual").textContent =
+        new Intl.DateTimeFormat("pt-BR", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric"
+        }).format(new Date());
+      montarAtalhos(sessao.tipo);
+      carregarPlantoes();
+    }
+
+    botaoAtualizar.addEventListener("click", carregarPlantoes);
+  </script>
+</body>
+</html>

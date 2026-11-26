@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prontuário - Baymax</title>
+
+  <style>
+    body.page-pront {
+      min-height: 100vh;
+      padding: 0 var(--page-pad) 32px;
+      background: var(--app-background);
+    }
+
+    .pront {
+      display: grid;
+      grid-template-columns: minmax(260px, 0.7fr) minmax(0, 2fr);
+      gap: 20px;
+      align-items: start;
+      width: min(1300px, 100%);
+      margin: 0 auto;
+    }
+
+    .pront-painel {
+      min-width: 0;
+      padding: 22px;
+      border: 1px solid var(--app-border);
+      border-radius: var(--app-radius);
+      background: var(--app-surface);
+      box-shadow: var(--app-shadow);
+    }
+
+    .pront-painel h2 {
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e7ecef;
+      font-size: 16px;
+      font-weight: 650;
+    }
+
+    .busca input { width: 100%; }
+    .dica, .vazio { margin-top: 10px; color: var(--app-muted); font-size: 12px; line-height: 1.5; }
+    .vazio { padding: 18px; text-align: center; }
+
+    .resultados { display: grid; gap: 8px; margin-top: 12px; list-style: none; padding: 0; }
+
+    .resultados button {
+      display: grid;
+      width: 100%;
+      gap: 3px;
+      padding: 10px 12px;
+      border: 1px solid #e6ecef;
+      background: #fff;
+      color: var(--app-ink);
+      text-align: left;
+    }
+
+    .resultados button:hover:not(:disabled),
+    .resultados button.ativo { border-color: var(--app-primary); background: var(--app-primary-soft); }
+    .resultados strong { font-size: 13px; }
+    .resultados small { color: var(--app-muted); font-size: 11px; }
+
+    .ficha { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 9px; margin-bottom: 16px; }
+
+    .dado { display: grid; gap: 4px; padding: 10px; border: 1px solid #e7ecef; border-radius: 7px; background: #fbfdfe; min-width: 0; }
+    .dado span { color: var(--app-muted); font-size: 11px; }
+    .dado strong { overflow-wrap: anywhere; font-size: 13px; font-weight: 600; }
+
+    .cabecalho { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+    .cabecalho h2 { margin: 0; padding: 0; border: none; font-size: 20px; }
+    .cabecalho .acoes { display: flex; gap: 8px; }
+
+    .visita { margin-top: 12px; border: 1px solid #e3ebef; border-radius: 8px; background: #fff; }
+    .visita summary { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 14px; font-size: 13px; font-weight: 650; cursor: pointer; }
+    .visita[open] summary { border-bottom: 1px solid #e3ebef; background: #fbfdfe; }
+    .visita-corpo { display: grid; gap: 12px; padding: 14px; }
+
+    .etapa { padding: 12px; border-left: 4px solid var(--app-primary); border-radius: 6px; background: #f6fafc; }
+    .etapa.triagem { border-left-color: #e6a12b; }
+    .etapa.consulta { border-left-color: #2e9d5b; }
+    .etapa.medicacao { border-left-color: #7a5cc7; }
+    .etapa.alta { border-left-color: #6b7a85; }
+    .etapa h3 { margin-bottom: 4px; font-size: 13px; }
+    .etapa .quem { margin-bottom: 8px; color: var(--app-muted); font-size: 11px; }
+    .etapa dl { display: grid; grid-template-columns: 150px 1fr; gap: 4px 12px; font-size: 13px; }
+    .etapa dt { color: var(--app-muted); }
+    .etapa dd { overflow-wrap: anywhere; white-space: pre-wrap; }
+
+    .status { padding: 2px 9px; border-radius: 20px; background: #eef2f4; color: var(--app-ink); font-size: 11px; font-weight: 700; }
+
+    @media (max-width: 860px) {
+      .pront { grid-template-columns: 1fr; }
+      .etapa dl { grid-template-columns: 1fr; }
+    }
+
+    @media print {
+      .baymax-nav, .pront-busca, .cabecalho .acoes { display: none !important; }
+      .pront { display: block; }
+      .pront-painel { border: none; box-shadow: none; padding: 0; }
+      .visita { break-inside: avoid; }
+    }
+  </style>
+  <link rel="stylesheet" href="css/system.css">
+</head>
+
+<body class="page-pront">
+  <main class="pront">
+    <section class="pront-painel pront-busca" aria-labelledby="titulo-busca">
+      <h2 id="titulo-busca">Buscar paciente</h2>
+      <div class="busca">
+        <input type="search" id="busca" placeholder="Nome ou CPF" autocomplete="off" aria-label="Buscar por nome ou CPF">
+      </div>
+      <p class="dica" id="dica">Digite ao menos 2 letras do nome ou 3 números do CPF.</p>
+      <ul id="resultados" class="resultados"></ul>
+    </section>
+
+    <section class="pront-painel" id="detalhe" aria-live="polite">
+      <p class="vazio">Selecione um paciente para ver o histórico completo de atendimentos.</p>
+    </section>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script>
+    const sessao = Baymax.iniciar(["medico", "triagem"]);
+    const $ = id => document.getElementById(id);
+
+    const ROTULO_STATUS = {
+      aguardando_triagem: "Aguardando triagem",
+      aguardando_medico: "Aguardando médico",
+      aguardando_medicacao: "Aguardando medicação",
+      aguardando_alta: "Aguardando alta",
+      alta: "Alta concedida"
+    };
+
+    function el(tag, classe, texto) {
+      const e = document.createElement(tag);
+      if (classe) e.className = classe;
+      if (texto !== undefined) e.textContent = texto;
+      return e;
+    }
+
+    function dado(rotulo, valor) {
+      const d = el("div", "dado");
+      d.append(el("span", "", rotulo), el("strong", "", valor));
+      return d;
+    }
+
+    // Bloco de uma etapa do atendimento (só mostra as linhas preenchidas)
+    function etapa(classe, titulo, quando, quem, linhas) {
+      const e = el("div", "etapa " + classe);
+      e.appendChild(el("h3", "", titulo));
+      e.appendChild(el("p", "quem", `${Baymax.dataHora(quando)}${quem ? " · por " + quem : ""}`));
+
+      const dl = el("dl");
+      linhas.filter(([, v]) => v !== undefined && v !== null && v !== "").forEach(([r, v]) => {
+        dl.append(el("dt", "", r), el("dd", "", String(v)));
+      });
+
+      e.appendChild(dl);
+      return e;
+    }
+
+    // ---------- Busca ----------
+
+    let temporizador = null;
+    let cpfAberto = null;
+
+    async function buscar() {
+      const termo = $("busca").value.trim();
+      const lista = $("resultados");
+
+      if (termo.length < 2) {
+        lista.replaceChildren();
+        $("dica").hidden = false;
+        return;
+      }
+
+      try {
+        const pessoas = await Baymax.api("/prontuario?busca=" + encodeURIComponent(termo));
+        $("dica").hidden = pessoas.length > 0;
+        $("dica").textContent = "Nenhum paciente encontrado.";
+
+        lista.replaceChildren(...pessoas.map(pessoa => {
+          const li = el("li");
+          const b = el("button");
+          b.type = "button";
+          b.classList.toggle("ativo", pessoa.cpf === cpfAberto);
+          b.append(
+            el("strong", "", pessoa.nome),
+            el("small", "", `CPF ${pessoa.cpf || "—"} · ${pessoa.visitas} visita${pessoa.visitas === 1 ? "" : "s"} · última: ${Baymax.dataHora(pessoa.ultimaVisita)}`)
+          );
+          b.addEventListener("click", () => abrir(pessoa.cpf));
+          li.appendChild(b);
+          return li;
+        }));
+      } catch (erro) {
+        $("dica").hidden = false;
+        $("dica").textContent = erro.message;
+      }
+    }
+
+    // ---------- Prontuário ----------
+
+    async function abrir(cpf) {
+      cpfAberto = cpf;
+      const painel = $("detalhe");
+      painel.replaceChildren(el("p", "vazio", "Carregando prontuário..."));
+
+      try {
+        const dados = await Baymax.api("/prontuario/paciente?cpf=" + encodeURIComponent(cpf));
+        renderizar(dados);
+        history.replaceState(null, "", "?cpf=" + encodeURIComponent(cpf));
+      } catch (erro) {
+        painel.replaceChildren(el("p", "vazio", erro.message));
+      }
+    }
+
+    function renderizar({ pessoa, alergias, visitas, internacoes = [], exames = [], cirurgias = [] }) {
+      const painel = $("detalhe");
+
+      const cab = el("div", "cabecalho");
+      cab.appendChild(el("h2", "", pessoa.nome));
+
+      const acoes = el("div", "acoes");
+      const imprimir = el("button", "", "Imprimir prontuário");
+      imprimir.type = "button";
+      imprimir.addEventListener("click", () => window.print());
+      acoes.appendChild(imprimir);
+      cab.appendChild(acoes);
+
+      const aviso = el("div", "aviso-alergia" + (alergias.length ? "" : " sem"),
+        alergias.length ? `⚠ Alergias registradas: ${alergias.join(", ")}` : "Nenhuma alergia informada em triagens anteriores.");
+      aviso.style.marginBottom = "14px";
+
+      const ficha = el("div", "ficha");
+      [
+        ["CPF", pessoa.cpf], ["Sexo", pessoa.sexo], ["Estado civil", pessoa.estado_civil],
+        ["Atendimento", pessoa.tipo], ["Nome da mãe", pessoa.nome_mae], ["Telefone", pessoa.telefone],
+        ["E-mail", pessoa.email], ["Endereço", pessoa.endereco], ["Contato de emergência", pessoa.contato_emergencia],
+        ["Doenças preexistentes", pessoa.doencasPreexistentes], ["Histórico médico", pessoa.historicoMedico]
+      ].filter(([, v]) => v).forEach(([r, v]) => ficha.appendChild(dado(r, v)));
+
+      const titulo = el("h2", "", `Histórico de atendimentos (${visitas.length})`);
+      titulo.style.margin = "18px 0 0";
+      titulo.style.border = "none";
+      const historico = [
+        cab,
+        aviso,
+        ficha,
+        titulo,
+        ...visitas.map((v, i) => visita(v, i === 0))
+      ];
+
+      const tituloInternacoes = el("h2", "", `Histórico de internações (${internacoes.length})`);
+      tituloInternacoes.style.margin = "22px 0 0";
+      tituloInternacoes.style.border = "none";
+      historico.push(tituloInternacoes);
+      if (internacoes.length) {
+        historico.push(...internacoes.map((item, index) => historicoInternacao(item, index === 0)));
+      } else {
+        historico.push(el("p", "vazio", "Nenhuma internação registrada."));
+      }
+
+      const tituloExames = el("h2", "", `Histórico de exames (${exames.length})`);
+      tituloExames.style.margin = "22px 0 0";
+      tituloExames.style.border = "none";
+      historico.push(tituloExames);
+      if (exames.length) {
+        historico.push(...exames.map(exame => etapa("", "Exame", exame.createdAt, exame.solicitadoPor, [
+          ["Exame", exame.exame ? `${exame.exame.codigo} · ${exame.exame.nome}` : "Exame"],
+          ["Prioridade", exame.prioridade],
+          ["Indicação", exame.indicacao],
+          ["Status", exame.status],
+          ["Coleta", exame.coletadoEm ? `${Baymax.dataHora(exame.coletadoEm)} · ${exame.coletadoPor || ""}` : ""],
+          ["Resultado", exame.resultado],
+          ["Resultado liberado por", exame.resultadoPor],
+          ["Data do resultado", exame.resultadoEm ? Baymax.dataHora(exame.resultadoEm) : ""]
+        ])));
+      } else {
+        historico.push(el("p", "vazio", "Nenhum exame solicitado."));
+      }
+
+      const tituloCirurgias = el("h2", "", `Histórico cirúrgico (${cirurgias.length})`);
+      tituloCirurgias.style.margin = "22px 0 0";
+      tituloCirurgias.style.border = "none";
+      historico.push(tituloCirurgias);
+      if (cirurgias.length) {
+        historico.push(...cirurgias.map(cirurgia => etapa("", "Cirurgia", cirurgia.inicio,
+          cirurgia.cirurgiaoNome, [
+            ["Procedimento", cirurgia.procedimento ? `${cirurgia.procedimento.codigo} · ${cirurgia.procedimento.nome}` : ""],
+            ["Sala", cirurgia.sala && cirurgia.sala.nome],
+            ["Duração prevista", `${cirurgia.duracaoMinutos} min`],
+            ["Equipe", (cirurgia.equipe || []).map(profissional => profissional.nome).join(", ")],
+            ["Status", cirurgia.status],
+            ["Observações", cirurgia.observacoes],
+            ["Resumo operatório", cirurgia.resumo],
+            ["Intercorrências", cirurgia.intercorrencias],
+            ["Registrado por", cirurgia.realizadaPor],
+            ["Realizada em", cirurgia.realizadaEm ? Baymax.dataHora(cirurgia.realizadaEm) : ""],
+            ["Motivo do cancelamento", cirurgia.motivoCancelamento]
+          ])));
+      } else {
+        historico.push(el("p", "vazio", "Nenhuma cirurgia registrada."));
+      }
+
+      painel.replaceChildren(...historico);
+    }
+
+    function historicoInternacao(item, aberta) {
+      const detalhe = el("details", "visita");
+      detalhe.open = aberta;
+      const resumo = el("summary");
+      resumo.append(
+        el("span", "", Baymax.dataHora(item.admitidoEm)),
+        el("span", "status", item.status === "ativa" ? "Internação ativa" : "Alta hospitalar"),
+        el("span", "", item.leito
+          ? `Quarto ${item.leito.quarto} · Leito ${item.leito.numero}`
+          : "Leito não identificado")
+      );
+      detalhe.appendChild(resumo);
+
+      const corpo = el("div", "visita-corpo");
+      corpo.appendChild(etapa("", "Admissão", item.admitidoEm, item.admitidoPor, [
+        ["Motivo", item.motivo],
+        ["Leito atual", item.leito
+          ? `Quarto ${item.leito.quarto} · Leito ${item.leito.numero} · ${item.leito.setor}`
+          : ""],
+        ["Resumo da alta", item.resumoAlta],
+        ["Alta registrada por", item.altaPor],
+        ["Data da alta", item.altaEm ? Baymax.dataHora(item.altaEm) : ""]
+      ]));
+
+      (item.transferencias || []).forEach(transferencia => {
+        corpo.appendChild(etapa("", "Transferência de leito", transferencia.createdAt, transferencia.profissional, [
+          ["Origem", transferencia.de],
+          ["Destino", transferencia.para],
+          ["Motivo", transferencia.motivo]
+        ]));
+      });
+      (item.evolucoes || []).forEach(registro => {
+        corpo.appendChild(etapa("", "Evolução de enfermagem", registro.createdAt, registro.profissional, [
+          ["Registro", registro.registro]
+        ]));
+      });
+      (item.sinaisVitais || []).forEach(registro => {
+        corpo.appendChild(etapa("triagem", "Sinais vitais", registro.createdAt, registro.profissional, [
+          ["Pressão", registro.pressao],
+          ["Temperatura", registro.temperatura != null ? `${registro.temperatura} °C` : ""],
+          ["Frequência cardíaca", registro.frequenciaCardiaca != null ? `${registro.frequenciaCardiaca} bpm` : ""],
+          ["Frequência respiratória", registro.frequenciaRespiratoria != null ? `${registro.frequenciaRespiratoria} irpm` : ""],
+          ["Saturação", registro.saturacao != null ? `${registro.saturacao}%` : ""],
+          ["Glicemia", registro.glicemia != null ? `${registro.glicemia} mg/dL` : ""],
+          ["Peso", registro.peso != null ? `${registro.peso} kg` : ""]
+        ]));
+      });
+      (item.balancoHidrico || []).forEach(registro => {
+        corpo.appendChild(etapa("", "Balanço hídrico", registro.createdAt, registro.profissional, [
+          ["Movimento", registro.tipo === "entrada" ? "Entrada" : "Saída"],
+          ["Item / origem", registro.item],
+          ["Volume", `${registro.ml} mL`],
+          ["Observação", registro.observacao]
+        ]));
+      });
+      (item.procedimentos || []).forEach(registro => {
+        corpo.appendChild(etapa("", "Procedimento de enfermagem", registro.createdAt, registro.profissional, [
+          ["Procedimento", registro.procedimento],
+          ["Observação", registro.observacao]
+        ]));
+      });
+      (item.prescricoes || []).forEach(prescricao => {
+        corpo.appendChild(etapa("medicacao", "Medicação prescrita durante internação", prescricao.createdAt, prescricao.medico, [
+          ["Medicação", prescricao.medicacao && prescricao.medicacao.nome],
+          ["Dose", prescricao.dose],
+          ["Via", prescricao.via],
+          ["Frequência", prescricao.frequencia],
+          ["Unidades prescritas", prescricao.quantidade],
+          ["Alergia confirmada", prescricao.alergiaConfirmada ? "Sim" : ""]
+        ]));
+        (prescricao.administracoes || []).forEach(administracao => {
+          corpo.appendChild(etapa("medicacao", "Medicação administrada", administracao.createdAt, administracao.administradoPor, [
+            ["Medicação", prescricao.medicacao && prescricao.medicacao.nome],
+            ["Dose", administracao.dose],
+            ["Via", administracao.via],
+            ["Quantidade", `${administracao.quantidade} un.`]
+          ]));
+        });
+      });
+
+      detalhe.appendChild(corpo);
+      return detalhe;
+    }
+
+    function visita(v, aberta) {
+      const d = el("details", "visita");
+      d.open = aberta;
+
+      const resumo = el("summary");
+      resumo.append(
+        el("span", "", Baymax.dataHora(v.entrada)),
+        Baymax.badgeRisco(v.risco),
+        el("span", "status", ROTULO_STATUS[v.status] || v.status)
+      );
+      d.appendChild(resumo);
+
+      const corpo = el("div", "visita-corpo");
+
+      corpo.appendChild(etapa("", "Atendimento (cadastro)", v.entrada, v.cadastradoPor, []));
+      corpo.lastChild.querySelector("dl").remove();
+
+      v.triagens.forEach(t => {
+        const s = t.sinais || {};
+        corpo.appendChild(etapa("triagem", "Triagem", t.createdAt, t.funcionario, [
+          ["Sintomas", t.sintoma],
+          ["Temperatura", t.temperatura != null ? `${t.temperatura} °C` : ""],
+          ["Pressão arterial", s.pressao ? `${s.pressao} mmHg` : ""],
+          ["Freq. cardíaca", s.fc != null ? `${s.fc} bpm` : ""],
+          ["Freq. respiratória", s.fr != null ? `${s.fr} irpm` : ""],
+          ["Saturação", s.spo2 != null ? `${s.spo2}%` : ""],
+          ["Dor", s.dor != null ? `${s.dor}/10` : ""],
+          ["Peso", s.peso != null ? `${s.peso} kg` : ""],
+          ["Alergias", t.alergia],
+          ["Classificação", (t.risco || "").toUpperCase()],
+          ["Motivo", (t.motivosRisco || []).join("\n")],
+          ["Observações", t.observacao]
+        ]));
+      });
+
+      v.consultas.forEach(c => {
+        corpo.appendChild(etapa("consulta", "Consulta médica", c.createdAt, c.medico, [
+          ["Diagnóstico", c.diagnostico],
+          ["Prescrição", c.prescricaoTexto],
+          ["Alergia confirmada", c.prescricao && c.prescricao.alergiaConfirmada ? "Sim, o médico confirmou a prescrição mesmo com alergia registrada" : ""],
+          ["Orientações", c.obs]
+        ]));
+      });
+
+      v.medicacoes.forEach(m => {
+        corpo.appendChild(etapa("medicacao", "Medicação aplicada", m.createdAt, m.aplicadoPor, [
+          ["Medicação", m.medicacao],
+          ["Quantidade", m.quantidade ? `${m.quantidade} un.` : ""]
+        ]));
+      });
+
+      if (v.alta) {
+        corpo.appendChild(etapa("alta", "Alta", v.alta.createdAt, v.alta.funcionario, [
+          ["Tipo", v.alta.tipoAlta],
+          ["Orientações", v.alta.orientacoes]
+        ]));
+      }
+
+      d.appendChild(corpo);
+      return d;
+    }
+
+    if (sessao) {
+      $("busca").addEventListener("input", () => {
+        clearTimeout(temporizador);
+        temporizador = setTimeout(buscar, 300);
+      });
+
+      // vindo da fila do médico: ?cpf=000.000.000-00
+      const cpfInicial = new URLSearchParams(location.search).get("cpf");
+
+      if (cpfInicial) {
+        $("busca").value = cpfInicial;
+        abrir(cpfInicial);
+        buscar();
+      }
+    }
+  </script>
+</body>
+</html>

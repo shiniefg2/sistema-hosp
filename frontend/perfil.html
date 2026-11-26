@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#eaf4fc">
+  <title>Perfil do funcionário - Baymax</title>
+  <link rel="stylesheet" href="css/system.css">
+</head>
+<body class="page-profile">
+  <main class="profile-layout">
+    <header class="profile-heading">
+      <span class="dashboard-kicker">CONTA DO FUNCIONÁRIO</span>
+      <h1>Perfil</h1>
+      <p>Atualize seu nome de exibição e sua foto de perfil.</p>
+    </header>
+
+    <section class="profile-panel" aria-label="Dados do perfil">
+      <div id="seletor-perfil-wrap" class="profile-user-picker" hidden>
+        <label class="profile-picker-field" for="busca-funcionario">
+          Buscar funcionário
+          <input
+            id="busca-funcionario"
+            type="search"
+            maxlength="100"
+            placeholder="Nome, usuário ou setor"
+            autocomplete="off"
+            aria-describedby="resultado-busca"
+            disabled
+          >
+        </label>
+        <label class="profile-picker-field" for="usuario-perfil">
+          Gerenciar perfil de funcionário
+          <select id="usuario-perfil" disabled>
+            <option value="">Carregando funcionários...</option>
+          </select>
+        </label>
+        <div class="profile-search-summary">
+          <p id="resultado-busca" class="profile-search-result" role="status" aria-live="polite"></p>
+          <details id="lista-funcionarios-disponiveis" class="profile-results-menu" hidden>
+            <summary aria-label="Visualizar funcionários disponíveis" title="Visualizar">⌄</summary>
+            <div id="lista-funcionarios-conteudo" class="profile-results-list"></div>
+            <div id="mini-perfil-funcionario" class="profile-hovercard" role="tooltip" hidden>
+              <span id="mini-perfil-iniciais" class="profile-hovercard-initials" aria-hidden="true"></span>
+              <img id="mini-perfil-foto" alt="" hidden>
+              <span class="profile-hovercard-data">
+                <strong id="mini-perfil-nome"></strong>
+                <small id="mini-perfil-setor"></small>
+                <small id="mini-perfil-usuario"></small>
+                <small class="profile-hovercard-status">Online</small>
+              </span>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <form id="form-perfil">
+        <div class="profile-identity">
+          <div class="profile-photo-frame" aria-label="Prévia da foto de perfil">
+            <img id="foto-preview" alt="Prévia da foto de perfil" hidden>
+            <span id="iniciais-preview" aria-hidden="true">?</span>
+          </div>
+          <div>
+            <div class="profile-meta">
+              <strong id="nome-conta">Carregando perfil...</strong>
+            </div>
+            <div class="profile-photo-tools">
+              <label class="profile-field" for="arquivo-foto">
+                Foto de perfil
+                <span class="profile-file-picker">
+                  <input
+                    id="arquivo-foto"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    aria-describedby="dica-foto"
+                    disabled
+                  >
+                  <span class="profile-file-button" aria-hidden="true">Selecionar imagem</span>
+                </span>
+              </label>
+              <button type="button" class="module-secondary" id="editar-foto" disabled>
+                Ajustar foto
+              </button>
+              <button type="button" class="module-secondary" id="remover-foto" disabled>
+                Remover foto
+              </button>
+            </div>
+           
+          </div>
+        </div>
+
+        <label class="profile-field" for="nome-perfil">
+          Nome de exibição
+          <input id="nome-perfil" name="nome" maxlength="120" autocomplete="name" disabled>
+        </label>
+
+        <p id="mensagem-perfil" class="profile-message" role="status" aria-live="polite"></p>
+        <div class="profile-actions">
+          <button type="submit" id="salvar-perfil" disabled>Salvar perfil</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <dialog id="editor-foto-perfil" class="profile-crop-dialog" aria-labelledby="titulo-editor-foto">
+    <div class="profile-crop-content">
+      <div class="profile-crop-heading">
+        <div>
+          <h2 id="titulo-editor-foto">Ajustar foto de perfil</h2>
+          <p>Arraste a imagem para enquadrar e ajuste o zoom.</p>
+        </div>
+        <button type="button" class="module-secondary profile-crop-close" id="fechar-editor-foto" aria-label="Fechar editor">×</button>
+      </div>
+      <div
+        id="area-recorte-foto"
+        class="profile-crop-viewport"
+        role="img"
+        aria-label="Área de corte da foto. Arraste para ajustar ou use as setas do teclado."
+        tabindex="0"
+      >
+        <img id="imagem-recorte-foto" alt="" draggable="false">
+      </div>
+      <label class="profile-crop-zoom" for="zoom-foto">
+        Zoom <output id="valor-zoom-foto" for="zoom-foto">100%</output>
+        <input id="zoom-foto" type="range" min="1" max="3" step="0.01" value="1">
+      </label>
+      <button type="button" class="module-secondary profile-crop-reset" id="centralizar-recorte-foto">
+        Centralizar imagem
+      </button>
+      <div class="profile-crop-actions">
+        <button type="button" class="module-secondary" id="cancelar-editor-foto">Cancelar</button>
+        <button type="button" id="aplicar-recorte-foto">Usar esta foto</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="js/app.js"></script>
+  <script>
+    const sessao = Baymax.iniciar(Object.keys(Baymax.SETORES));
+    const administrador = Boolean(sessao && sessao.tipo === "admin");
+    const formulario = document.getElementById("form-perfil");
+    const seletor = document.getElementById("usuario-perfil");
+    const campoBusca = document.getElementById("busca-funcionario");
+    const resultadoBusca = document.getElementById("resultado-busca");
+    const listaFuncionariosDisponiveis = document.getElementById("lista-funcionarios-disponiveis");
+    const listaFuncionariosConteudo = document.getElementById("lista-funcionarios-conteudo");
+    const miniPerfilFuncionario = document.getElementById("mini-perfil-funcionario");
+    const miniPerfilIniciais = document.getElementById("mini-perfil-iniciais");
+    const miniPerfilFoto = document.getElementById("mini-perfil-foto");
+    const miniPerfilNome = document.getElementById("mini-perfil-nome");
+    const miniPerfilSetor = document.getElementById("mini-perfil-setor");
+    const miniPerfilUsuario = document.getElementById("mini-perfil-usuario");
+    const nomePerfil = document.getElementById("nome-perfil");
+    const arquivoFoto = document.getElementById("arquivo-foto");
+    const fotoPreview = document.getElementById("foto-preview");
+    const iniciaisPreview = document.getElementById("iniciais-preview");
+    const botaoEditarFoto = document.getElementById("editar-foto");
+    const botaoRemover = document.getElementById("remover-foto");
+    const botaoSalvar = document.getElementById("salvar-perfil");
+    const mensagem = document.getElementById("mensagem-perfil");
+    const editorFoto = document.getElementById("editor-foto-perfil");
+    const areaRecorte = document.getElementById("area-recorte-foto");
+    const imagemRecorte = document.getElementById("imagem-recorte-foto");
+    const zoomFoto = document.getElementById("zoom-foto");
+    const valorZoomFoto = document.getElementById("valor-zoom-foto");
+    const botaoAplicarRecorte = document.getElementById("aplicar-recorte-foto");
+    let usuarioSelecionado = "";
+    let fotoPerfil = null;
+    let fotoAlterada = false;
+    let requisicaoPerfil = 0;
+    let usuariosDisponiveis = [];
+    let imagemOriginal = null;
+    let urlFotoTemporaria = null;
+    let escalaBaseRecorte = 1;
+    let zoomRecorte = 1;
+    let posicaoRecorte = { x: 0, y: 0 };
+    let ponteiroRecorte = null;
+    let funcionarioEmMiniPerfil = null;
+    const perfisEmCache = new Map();
+
+    function normalizarBusca(texto) {
+      return String(texto || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLocaleLowerCase("pt-BR");
+    }
+
+    function carregarPerfilResumido(usuario) {
+      if (!perfisEmCache.has(usuario.usuario)) {
+        const requisicao = Baymax.api(`/usuarios/${encodeURIComponent(usuario.usuario)}/perfil`)
+          .catch(erro => {
+            perfisEmCache.delete(usuario.usuario);
+            console.warn(`Não foi possível carregar o perfil de ${usuario.usuario}:`, erro);
+            return null;
+          });
+        perfisEmCache.set(usuario.usuario, requisicao);
+      }
+      return perfisEmCache.get(usuario.usuario);
+    }
+
+    function definirFotoMiniPerfil(foto) {
+      if (typeof foto === "string" && /^data:image\/(jpeg|png|webp);base64,/.test(foto)) {
+        miniPerfilFoto.src = foto;
+        miniPerfilFoto.hidden = false;
+        miniPerfilIniciais.hidden = true;
+      } else {
+        miniPerfilFoto.removeAttribute("src");
+        miniPerfilFoto.hidden = true;
+        miniPerfilIniciais.hidden = false;
+      }
+    }
+
+    function mostrarMiniPerfil(usuario, item) {
+      funcionarioEmMiniPerfil = usuario.usuario;
+      miniPerfilNome.textContent = usuario.nome;
+      miniPerfilSetor.textContent = Baymax.SETORES[usuario.tipo] || usuario.tipo;
+      miniPerfilUsuario.textContent = `@${usuario.usuario}`;
+      const partes = String(usuario.nome || "").trim().split(/\s+/).filter(Boolean);
+      miniPerfilIniciais.textContent = partes.length
+        ? partes.slice(0, 2).map(parte => parte[0]).join("").toLocaleUpperCase("pt-BR")
+        : "?";
+      definirFotoMiniPerfil(usuario.fotoPerfil);
+      miniPerfilFuncionario.hidden = false;
+
+      const dimensoes = miniPerfilFuncionario.getBoundingClientRect();
+      const retangulo = item.getBoundingClientRect();
+      const espacamento = 10;
+      const esquerda = retangulo.right + dimensoes.width + espacamento <= window.innerWidth
+        ? retangulo.right + espacamento
+        : Math.max(8, retangulo.left - dimensoes.width - espacamento);
+      const topo = Math.min(
+        Math.max(8, retangulo.top + (retangulo.height - dimensoes.height) / 2),
+        window.innerHeight - dimensoes.height - 8
+      );
+      miniPerfilFuncionario.style.left = `${esquerda}px`;
+      miniPerfilFuncionario.style.top = `${topo}px`;
+
+      carregarPerfilResumido(usuario).then(perfil => {
+        if (!perfil || funcionarioEmMiniPerfil !== usuario.usuario) return;
+        usuario.fotoPerfil = perfil.fotoPerfil;
+        definirFotoMiniPerfil(perfil.fotoPerfil);
+      });
+    }
+
+    function ocultarMiniPerfil() {
+      funcionarioEmMiniPerfil = null;
+      miniPerfilFuncionario.hidden = true;
+    }
+
+    function atualizarListaFuncionarios() {
+      const consulta = normalizarBusca(campoBusca.value.trim());
+      const valorSelecionado = seletor.value || usuarioSelecionado;
+      const encontrados = usuariosDisponiveis.filter(usuario => [
+        usuario.nome,
+        usuario.usuario,
+        Baymax.SETORES[usuario.tipo] || usuario.tipo
+      ].some(valor => normalizarBusca(valor).includes(consulta)));
+      const usuarioAtual = usuariosDisponiveis.find(usuario => usuario.usuario === valorSelecionado);
+      const opcoes = encontrados.slice();
+
+      if (usuarioAtual && !encontrados.includes(usuarioAtual)) {
+        opcoes.unshift({ ...usuarioAtual, perfilAberto: true });
+      }
+
+      seletor.replaceChildren();
+      opcoes.forEach(usuario => {
+        const opcao = document.createElement("option");
+        opcao.value = usuario.usuario;
+        const setor = Baymax.SETORES[usuario.tipo] || usuario.tipo;
+        const perfilAberto = usuario.perfilAberto ? " — perfil aberto" : "";
+        opcao.textContent = `${usuario.nome} — ${setor} (@${usuario.usuario})${perfilAberto}`;
+        seletor.appendChild(opcao);
+      });
+
+      if (opcoes.some(usuario => usuario.usuario === valorSelecionado)) {
+        seletor.value = valorSelecionado;
+      }
+
+      const total = encontrados.length;
+      if (total === 0) {
+        resultadoBusca.textContent = consulta
+          ? "Nenhum funcionário encontrado. O perfil aberto continua selecionado."
+          : "Nenhum funcionário disponível.";
+      } else {
+        resultadoBusca.textContent = consulta
+          ? `${total} ${total === 1 ? "funcionário encontrado" : "funcionários encontrados"}.`
+          : `${total} ${total === 1 ? "funcionário disponível" : "funcionários disponíveis"}.`;
+      }
+
+      renderizarListaFuncionarios(encontrados);
+    }
+
+    function renderizarListaFuncionarios(funcionarios) {
+      listaFuncionariosConteudo.replaceChildren();
+      listaFuncionariosDisponiveis.hidden = funcionarios.length === 0;
+
+      funcionarios.forEach(usuario => {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "profile-result-item";
+
+        const iniciais = document.createElement("span");
+        iniciais.className = "profile-result-initials";
+        const partes = String(usuario.nome || "").trim().split(/\s+/).filter(Boolean);
+        iniciais.textContent = partes.length
+          ? partes.slice(0, 2).map(parte => parte[0]).join("").toLocaleUpperCase("pt-BR")
+          : "?";
+        item.appendChild(iniciais);
+
+        const dados = document.createElement("span");
+        dados.className = "profile-result-data";
+        const nome = document.createElement("strong");
+        nome.textContent = usuario.nome;
+        const setor = document.createElement("small");
+        setor.textContent = Baymax.SETORES[usuario.tipo] || usuario.tipo;
+        dados.append(nome, setor);
+        item.appendChild(dados);
+
+        carregarPerfilResumido(usuario)
+          .then(perfil => {
+            if (!perfil) return;
+            usuario.fotoPerfil = perfil.fotoPerfil;
+            if (typeof perfil.fotoPerfil !== "string" ||
+                !/^data:image\/(jpeg|png|webp);base64,/.test(perfil.fotoPerfil)) return;
+            const foto = document.createElement("img");
+            foto.src = perfil.fotoPerfil;
+            foto.alt = "";
+            foto.width = 34;
+            foto.height = 34;
+            item.replaceChild(foto, iniciais);
+          })
+          .catch(erro => console.warn("Não foi possível carregar a foto do funcionário:", erro));
+
+        item.addEventListener("mouseenter", () => mostrarMiniPerfil(usuario, item));
+        item.addEventListener("mouseleave", ocultarMiniPerfil);
+        item.addEventListener("focus", () => mostrarMiniPerfil(usuario, item));
+        item.addEventListener("blur", ocultarMiniPerfil);
+
+        item.addEventListener("click", () => {
+          usuarioSelecionado = usuario.usuario;
+          seletor.value = usuario.usuario;
+          listaFuncionariosDisponiveis.open = false;
+          ocultarMiniPerfil();
+          carregarPerfil();
+        });
+        listaFuncionariosConteudo.appendChild(item);
+      });
+    }
+
+    function exibirMensagem(texto, erro = false) {
+      mensagem.textContent = texto;
+      mensagem.classList.toggle("error", erro);
+    }
+
+    function atualizarIniciais(nome) {
+      const partes = String(nome || "").trim().split(/\s+/).filter(Boolean);
+      iniciaisPreview.textContent = partes.length
+        ? partes.slice(0, 2).map(parte => parte[0]).join("").toLocaleUpperCase("pt-BR")
+        : "?";
+    }
+
+    function atualizarPrevia(foto) {
+      if (foto) {
+        fotoPreview.src = foto;
+        fotoPreview.hidden = false;
+        iniciaisPreview.hidden = true;
+      } else {
+        fotoPreview.removeAttribute("src");
+        fotoPreview.hidden = true;
+        iniciaisPreview.hidden = false;
+      }
+    }
+
+    function habilitarFormulario(habilitado) {
+      nomePerfil.disabled = !habilitado;
+      arquivoFoto.disabled = !habilitado;
+      botaoEditarFoto.disabled = !habilitado || !fotoPerfil;
+      botaoRemover.disabled = !habilitado;
+      botaoSalvar.disabled = !habilitado;
+    }
+
+    async function carregarUsuarios() {
+      const usuarios = await Baymax.api("/usuarios");
+      if (!Array.isArray(usuarios)) {
+        throw new Error("A lista de funcionários retornou dados inválidos.");
+      }
+      if (usuarios.length === 0) {
+        throw new Error("Não há funcionários disponíveis para gerenciamento.");
+      }
+
+      usuariosDisponiveis = usuarios;
+      const proprioUsuario = usuarios.find(usuario => usuario.usuario === sessao.usuario);
+      if (proprioUsuario) usuarioSelecionado = proprioUsuario.usuario;
+      campoBusca.disabled = false;
+      seletor.disabled = false;
+      atualizarListaFuncionarios();
+    }
+
+    async function carregarPerfil() {
+      const atual = ++requisicaoPerfil;
+      usuarioSelecionado = administrador ? seletor.value : sessao.usuario;
+      habilitarFormulario(false);
+      exibirMensagem("Carregando perfil...");
+
+      if (!usuarioSelecionado) {
+        exibirMensagem("Selecione um funcionário para carregar o perfil.", true);
+        return;
+      }
+
+      try {
+        const url = administrador
+          ? `/usuarios/${encodeURIComponent(usuarioSelecionado)}/perfil`
+          : "/perfil";
+        const perfil = await Baymax.api(url);
+        if (atual !== requisicaoPerfil) return;
+
+        usuarioSelecionado = perfil.usuario;
+        fotoPerfil = perfil.fotoPerfil;
+        fotoAlterada = false;
+        nomePerfil.value = perfil.nome;
+        document.getElementById("nome-conta").textContent = perfil.nome;
+        atualizarIniciais(perfil.nome);
+        atualizarPrevia(fotoPerfil);
+        habilitarFormulario(true);
+        exibirMensagem("");
+      } catch (erro) {
+        if (atual !== requisicaoPerfil) return;
+        console.error("Erro ao carregar perfil:", erro);
+        nomePerfil.value = "";
+        document.getElementById("nome-conta").textContent = "Perfil indisponível";
+        fotoPerfil = null;
+        atualizarPrevia(null);
+        exibirMensagem(erro.message || "Não foi possível carregar o perfil.", true);
+      }
+    }
+
+    function atualizarRecorte() {
+      if (!imagemOriginal) return;
+      const tamanho = areaRecorte.clientWidth;
+      const escala = escalaBaseRecorte * zoomRecorte;
+      const largura = imagemOriginal.naturalWidth * escala;
+      const altura = imagemOriginal.naturalHeight * escala;
+      posicaoRecorte.x = Math.min(0, Math.max(tamanho - largura, posicaoRecorte.x));
+      posicaoRecorte.y = Math.min(0, Math.max(tamanho - altura, posicaoRecorte.y));
+      imagemRecorte.style.width = `${largura}px`;
+      imagemRecorte.style.height = `${altura}px`;
+      imagemRecorte.style.left = `${posicaoRecorte.x}px`;
+      imagemRecorte.style.top = `${posicaoRecorte.y}px`;
+    }
+
+    function centralizarRecorte() {
+      if (!imagemOriginal) return;
+      const tamanho = areaRecorte.clientWidth;
+      escalaBaseRecorte = Math.max(
+        tamanho / imagemOriginal.naturalWidth,
+        tamanho / imagemOriginal.naturalHeight
+      );
+      zoomRecorte = 1;
+      zoomFoto.value = "1";
+      valorZoomFoto.value = "100%";
+      const largura = imagemOriginal.naturalWidth * escalaBaseRecorte;
+      const altura = imagemOriginal.naturalHeight * escalaBaseRecorte;
+      posicaoRecorte = {
+        x: (tamanho - largura) / 2,
+        y: (tamanho - altura) / 2
+      };
+      atualizarRecorte();
+    }
+
+    async function abrirEditorFoto(origem) {
+      if (origem instanceof File) {
+        const tiposPermitidos = ["image/jpeg", "image/png", "image/webp"];
+        if (!tiposPermitidos.includes(origem.type)) {
+          throw new Error("Escolha uma imagem JPEG, PNG ou WebP.");
+        }
+        if (origem.size > 5 * 1024 * 1024) {
+          throw new Error("A imagem original deve ter no máximo 5 MB.");
+        }
+      }
+
+      const url = origem instanceof File ? URL.createObjectURL(origem) : origem;
+      const imagem = new Image();
+      try {
+        await new Promise((resolve, reject) => {
+          imagem.onload = resolve;
+          imagem.onerror = () => reject(new Error("Não foi possível abrir esta imagem."));
+          imagem.src = url;
+        });
+        if (!imagem.naturalWidth || !imagem.naturalHeight ||
+            imagem.naturalWidth * imagem.naturalHeight > 40000000) {
+          throw new Error("A imagem tem dimensões inválidas ou muito grandes.");
+        }
+
+        imagemOriginal = imagem;
+        imagemRecorte.src = url;
+        editorFoto.showModal();
+        urlFotoTemporaria = origem instanceof File ? url : null;
+        requestAnimationFrame(() => {
+          centralizarRecorte();
+          areaRecorte.focus();
+        });
+      } catch (erro) {
+        if (origem instanceof File) URL.revokeObjectURL(url);
+        imagemOriginal = null;
+        imagemRecorte.removeAttribute("src");
+        throw erro;
+      }
+    }
+
+    function prepararFotoRecortada() {
+      if (!imagemOriginal) {
+        throw new Error("Selecione uma imagem para recortar.");
+      }
+
+      const tamanho = areaRecorte.clientWidth;
+      const escala = escalaBaseRecorte * zoomRecorte;
+      const origemX = -posicaoRecorte.x / escala;
+      const origemY = -posicaoRecorte.y / escala;
+      const tamanhoOrigem = tamanho / escala;
+      const canvas = document.createElement("canvas");
+      canvas.width = 512;
+      canvas.height = 512;
+      const contexto = canvas.getContext("2d");
+      if (!contexto) throw new Error("Não foi possível processar a imagem neste navegador.");
+      contexto.drawImage(
+        imagemOriginal,
+        origemX,
+        origemY,
+        tamanhoOrigem,
+        tamanhoOrigem,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
+
+      let qualidade = 0.82;
+      let resultado = canvas.toDataURL("image/jpeg", qualidade);
+      while (resultado.length > 680000 && qualidade > 0.5) {
+        qualidade -= 0.08;
+        resultado = canvas.toDataURL("image/jpeg", qualidade);
+      }
+      if (resultado.length > 680000) {
+        throw new Error("A foto continua grande demais após a compressão.");
+      }
+      return resultado;
+    }
+
+    function fecharEditorFoto() {
+      if (urlFotoTemporaria) URL.revokeObjectURL(urlFotoTemporaria);
+      urlFotoTemporaria = null;
+      imagemOriginal = null;
+      imagemRecorte.removeAttribute("src");
+      imagemRecorte.removeAttribute("style");
+      areaRecorte.classList.remove("is-dragging");
+      ponteiroRecorte = null;
+    }
+
+    function atualizarZoomRecorte() {
+      const proximoZoom = Number(zoomFoto.value);
+      const fator = proximoZoom / zoomRecorte;
+      const centro = areaRecorte.clientWidth / 2;
+      posicaoRecorte.x = centro - (centro - posicaoRecorte.x) * fator;
+      posicaoRecorte.y = centro - (centro - posicaoRecorte.y) * fator;
+      zoomRecorte = proximoZoom;
+      valorZoomFoto.value = `${Math.round(zoomRecorte * 100)}%`;
+      atualizarRecorte();
+    }
+
+    document.getElementById("seletor-perfil-wrap").hidden = !administrador;
+    if (administrador) {
+      carregarUsuarios()
+        .then(carregarPerfil)
+        .catch(erro => {
+          console.error("Erro ao carregar funcionários:", erro);
+          exibirMensagem(erro.message || "Não foi possível carregar os funcionários.", true);
+        });
+      campoBusca.addEventListener("input", atualizarListaFuncionarios);
+      seletor.addEventListener("change", carregarPerfil);
+    } else if (sessao) {
+      carregarPerfil();
+    }
+
+    nomePerfil.addEventListener("input", () => atualizarIniciais(nomePerfil.value));
+
+    arquivoFoto.addEventListener("change", async evento => {
+      const campoArquivo = evento.currentTarget;
+      const arquivo = campoArquivo.files && campoArquivo.files[0];
+      if (!arquivo) return;
+
+      try {
+        await abrirEditorFoto(arquivo);
+      } catch (erro) {
+        exibirMensagem(erro.message || "Não foi possível preparar a foto.", true);
+      } finally {
+        campoArquivo.value = "";
+      }
+    });
+
+    botaoEditarFoto.addEventListener("click", async () => {
+      if (!fotoPerfil) return;
+      try {
+        await abrirEditorFoto(fotoPerfil);
+      } catch (erro) {
+        exibirMensagem(erro.message || "Não foi possível abrir o editor de foto.", true);
+      }
+    });
+
+    document.getElementById("fechar-editor-foto").addEventListener("click", () => editorFoto.close());
+    document.getElementById("cancelar-editor-foto").addEventListener("click", () => editorFoto.close());
+    editorFoto.addEventListener("close", fecharEditorFoto);
+    zoomFoto.addEventListener("input", atualizarZoomRecorte);
+    document.getElementById("centralizar-recorte-foto").addEventListener("click", centralizarRecorte);
+
+    areaRecorte.addEventListener("pointerdown", evento => {
+      if (!imagemOriginal) return;
+      evento.preventDefault();
+      areaRecorte.setPointerCapture(evento.pointerId);
+      areaRecorte.classList.add("is-dragging");
+      ponteiroRecorte = {
+        id: evento.pointerId,
+        x: evento.clientX,
+        y: evento.clientY,
+        imagemX: posicaoRecorte.x,
+        imagemY: posicaoRecorte.y
+      };
+    });
+    areaRecorte.addEventListener("pointermove", evento => {
+      if (!ponteiroRecorte || ponteiroRecorte.id !== evento.pointerId) return;
+      posicaoRecorte.x = ponteiroRecorte.imagemX + evento.clientX - ponteiroRecorte.x;
+      posicaoRecorte.y = ponteiroRecorte.imagemY + evento.clientY - ponteiroRecorte.y;
+      atualizarRecorte();
+    });
+    const encerrarArraste = evento => {
+      if (!ponteiroRecorte || ponteiroRecorte.id !== evento.pointerId) return;
+      ponteiroRecorte = null;
+      areaRecorte.classList.remove("is-dragging");
+    };
+    areaRecorte.addEventListener("pointerup", encerrarArraste);
+    areaRecorte.addEventListener("pointercancel", encerrarArraste);
+    areaRecorte.addEventListener("keydown", evento => {
+      const deslocamento = evento.shiftKey ? 1 : 10;
+      const movimentos = {
+        ArrowLeft: [-deslocamento, 0],
+        ArrowRight: [deslocamento, 0],
+        ArrowUp: [0, -deslocamento],
+        ArrowDown: [0, deslocamento]
+      };
+      if (!movimentos[evento.key]) return;
+      evento.preventDefault();
+      posicaoRecorte.x += movimentos[evento.key][0];
+      posicaoRecorte.y += movimentos[evento.key][1];
+      atualizarRecorte();
+    });
+
+    botaoAplicarRecorte.addEventListener("click", () => {
+      botaoAplicarRecorte.disabled = true;
+      try {
+        fotoPerfil = prepararFotoRecortada();
+        fotoAlterada = true;
+        atualizarPrevia(fotoPerfil);
+        botaoEditarFoto.disabled = false;
+        editorFoto.close();
+        exibirMensagem("Foto ajustada. Salve o perfil para aplicar a alteração.");
+      } catch (erro) {
+        exibirMensagem(erro.message || "Não foi possível recortar a foto.", true);
+      } finally {
+        botaoAplicarRecorte.disabled = false;
+      }
+    });
+
+    botaoRemover.addEventListener("click", () => {
+      fotoPerfil = null;
+      fotoAlterada = true;
+      botaoEditarFoto.disabled = true;
+      atualizarPrevia(null);
+      exibirMensagem("A foto será removida quando você salvar o perfil.");
+    });
+
+    formulario.addEventListener("submit", async evento => {
+      evento.preventDefault();
+      if (!usuarioSelecionado) return;
+
+      botaoSalvar.disabled = true;
+      exibirMensagem("Salvando perfil...");
+      const dados = { nome: nomePerfil.value.trim() };
+      if (fotoAlterada) dados.fotoPerfil = fotoPerfil;
+
+      try {
+        const url = administrador
+          ? `/usuarios/${encodeURIComponent(usuarioSelecionado)}/perfil`
+          : "/perfil";
+        const perfil = await Baymax.api(url, { method: "PUT", body: dados });
+        fotoPerfil = perfil.fotoPerfil;
+        fotoAlterada = false;
+        botaoEditarFoto.disabled = !fotoPerfil;
+        nomePerfil.value = perfil.nome;
+        document.getElementById("nome-conta").textContent = perfil.nome;
+        atualizarIniciais(perfil.nome);
+        atualizarPrevia(fotoPerfil);
+
+        if (perfil.usuario.toLocaleLowerCase("pt-BR") === sessao.usuario.toLocaleLowerCase("pt-BR")) {
+          Baymax.atualizarSessao({ ...sessao, ...perfil });
+        }
+        exibirMensagem("Perfil atualizado com sucesso.");
+      } catch (erro) {
+        console.error("Erro ao salvar perfil:", erro);
+        exibirMensagem(erro.message || "Não foi possível salvar o perfil.", true);
+      } finally {
+        botaoSalvar.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

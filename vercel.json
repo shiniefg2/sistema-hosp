@@ -1,0 +1,301 @@
+{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/frontend/index.html"
+    },
+    {
+      "source": "/login",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/login/admin",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/sessao",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/usuarios",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/usuarios/:usuario",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/pessoas",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/pessoas/:id",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/agenda/medicos",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/agendamentos",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/agendamentos/:id",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/leitos",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/leitos/:id",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/internacoes",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/internacoes/pacientes",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/internacoes/:id/transferencia",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/internacoes/:id/alta",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/cirurgias/salas",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/cirurgias/salas/:id",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/cirurgias/catalogo",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/cirurgias/catalogo/:id",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/cirurgias/pacientes",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/cirurgias/medicos",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/cirurgias",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/cirurgias/:id/realizar",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/cirurgias/:id/cancelar",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/exames/catalogo",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/exames/catalogo/:id",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/exames/pacientes",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/exames",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/exames/:id/coleta",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/exames/:id/resultado",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/exames/:id/cancelar",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/cirurgias/salas",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/cirurgias/salas/:id",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/cirurgias/catalogo",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/cirurgias/catalogo/:id",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/cirurgias/pacientes",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/cirurgias/medicos",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/cirurgias",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/cirurgias/:id/realizar",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/cirurgias/:id/cancelar",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/enfermagem/registros/:internacaoId",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/internacoes/:id/prescricoes",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/prescricoes-internacao/:id/administrar",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/enfermagem/evolucoes",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/enfermagem/sinais-vitais",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/enfermagem/balanco-hidrico",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/enfermagem/procedimentos",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/atendimento",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/triagem",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/triagens",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/pacientes/triagem",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/pacientes/medico",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/pacientes/medicacao",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/pacientes/atendidos",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/consulta",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/medicacoes",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/lista-medicacoes",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/lista-medicacoes/:id",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/medicacao/aplicar",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/alta",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/plantoes",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/plantoes/:id",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/prontuario",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/prontuario/paciente",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/relatorios/resumo",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/backup",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/almoxarifado/movimentar",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/almoxarifado/movimentacoes",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/altas",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/tv/chamada",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/tv/chamar",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/frontend/$1"
+    }
+  ]
+}

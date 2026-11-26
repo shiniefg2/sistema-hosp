@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Administração - Baymax</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            padding: 30px 15px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            background: #f1f3f8;
+            font-family: Arial, Helvetica, sans-serif;
+            color: #333;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 480px;
+            padding: 30px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .link-voltar {
+            display: inline-block;
+            margin-bottom: 22px;
+            color: #3409db;
+            font-size: 14px;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .link-voltar:hover {
+            color: #2105a0;
+            text-decoration: underline;
+        }
+
+        h2 {
+            margin-bottom: 22px;
+            color: #222;
+            font-size: 25px;
+            text-align: center;
+        }
+
+        h3 {
+            margin-bottom: 18px;
+            color: #333;
+            font-size: 19px;
+        }
+
+        #cadastroForm {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            min-height: 46px;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 7px;
+            background: #fff;
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: #3409db;
+            box-shadow: 0 0 0 3px rgba(52, 9, 219, 0.1);
+        }
+
+        input::placeholder {
+            color: #888;
+        }
+
+        button {
+            min-height: 46px;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 7px;
+            background: #3409db;
+            color: #fff;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        button[hidden] {
+            display: none;
+        }
+
+        button:hover {
+            background: #2706ad;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #btnCancelar {
+            background: #6b7280;
+        }
+
+        #btnCancelar:hover {
+            background: #4b5563;
+        }
+
+        .btn-excluir {
+            background: #c62828;
+        }
+
+        .btn-excluir:hover {
+            background: #a31f1f;
+        }
+
+        .separador {
+            margin: 26px 0;
+            border: none;
+            border-top: 1px solid #e1e1e1;
+        }
+
+        #listausuarios {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .card {
+            padding: 15px;
+            border: 1px solid #e2e5ed;
+            border-left: 4px solid #3409db;
+            border-radius: 8px;
+            background: #f9faff;
+            overflow-wrap: anywhere;
+            transition: box-shadow 0.2s;
+        }
+
+        .card:hover {
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06);
+        }
+
+        .card p {
+            margin: 5px 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .acoes {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .acoes button {
+            flex: 1;
+            min-width: 100px;
+        }
+
+        .mensagem {
+            margin-top: 14px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .mensagem:empty {
+            display: none;
+        }
+
+        .mensagem.sucesso {
+            color: #18733b;
+        }
+
+        .mensagem.erro {
+            color: #c62828;
+        }
+
+        #listausuarios > p {
+            color: #777;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 500px) {
+            body {
+                padding: 18px 12px;
+            }
+
+            .container {
+                padding: 22px 18px;
+                border-radius: 10px;
+            }
+
+            h2 {
+                font-size: 22px;
+            }
+
+            h3 {
+                font-size: 18px;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="css/system.css">
+</head>
+
+<body class="page-admin">
+    <header class="admin-topbar">
+        <div>
+            <span class="admin-eyebrow">BAYMAX • CENTRAL DE CONTROLE</span>
+            <h1>Painel administrativo</h1>
+        </div>
+        <nav class="admin-section-nav" aria-label="Seções do painel">
+            <a href="#visao-geral">Visão geral</a>
+            <a href="#gerenciar-usuarios">Gerenciar usuários</a>
+        </nav>
+    </header>
+
+    <main class="admin-layout">
+        <section class="admin-dashboard" id="visao-geral" aria-labelledby="titulo-painel">
+            <div class="admin-section-heading">
+                <div>
+                    <h2 id="titulo-painel">Visão geral em tempo real</h2>
+                    <p id="atualizacao-painel" role="status" aria-live="polite">Carregando filas...</p>
+                </div>
+                <button type="button" class="admin-refresh" id="atualizar-painel">Atualizar agora</button>
+            </div>
+
+            <div class="admin-stats" aria-label="Quantidade de pacientes por etapa">
+                <article class="admin-stat"><span>Aguardando triagem</span><strong id="total-triagem">—</strong></article>
+                <article class="admin-stat"><span>Aguardando médico</span><strong id="total-medico">—</strong></article>
+                <article class="admin-stat"><span>Aguardando medicação</span><strong id="total-medicacao">—</strong></article>
+                <article class="admin-stat"><span>Aguardando alta</span><strong id="total-alta">—</strong></article>
+            </div>
+
+            <div class="admin-stats" aria-label="Indicadores hospitalares reais">
+                <article class="admin-stat"><span>Atendimentos hoje</span><strong id="indicador-atendimentos">—</strong></article>
+                <article class="admin-stat"><span>Consultas hoje</span><strong id="indicador-consultas">—</strong></article>
+                <article class="admin-stat"><span>Cirurgias hoje</span><strong id="indicador-cirurgias">—</strong></article>
+                <article class="admin-stat"><span>Médicos ativos</span><strong id="indicador-medicos">—</strong></article>
+                <article class="admin-stat"><span>Internações ativas</span><strong id="indicador-internacoes">—</strong></article>
+                <article class="admin-stat"><span>Exames pendentes</span><strong id="indicador-exames">—</strong></article>
+                <article class="admin-stat"><span>Leitos disponíveis</span><strong id="indicador-leitos-livres">—</strong></article>
+                <article class="admin-stat"><span>Leitos ocupados</span><strong id="indicador-leitos-ocupados">—</strong></article>
+                <article class="admin-stat"><span>Ocupação</span><strong id="indicador-ocupacao">—</strong></article>
+            </div>
+
+            <div class="admin-queue-heading">
+                <h3>Pacientes em atendimento</h3>
+                <span id="total-pacientes">0 pacientes</span>
+            </div>
+            <div id="lista-painel-pacientes" class="admin-patient-list" aria-live="polite">
+                <p class="admin-empty">Carregando pacientes...</p>
+            </div>
+        </section>
+
+        <section class="container admin-users" id="gerenciar-usuarios" aria-labelledby="titulo-usuarios">
+        <h2 id="titulo-usuarios">Gerenciar usuários</h2>
+
+        <form id="cadastroForm">
+            <input
+                type="text"
+                id="usuario"
+                name="usuario"
+                placeholder="Nome de usuário (login)"
+                autocomplete="username"
+                maxlength="100"
+                required
+            >
+
+            <input
+                type="text"
+                id="nome-funcionario"
+                name="nome"
+                placeholder="Nome completo do funcionário"
+                autocomplete="name"
+                maxlength="120"
+                required
+            >
+
+            <input
+                type="password"
+                id="senha"
+                name="senha"
+                placeholder="Senha"
+                autocomplete="new-password"
+                required
+            >
+
+            <select id="tipo" name="tipo" required>
+                <option value="">Selecione o setor</option>
+                <option value="atendimento">Atendimento</option>
+                <option value="triagem">Triagem</option>
+                <option value="medico">Médico</option>
+                <option value="enfermagem">Enfermagem</option>
+                <option value="tecnico_enfermagem">Técnico de enfermagem</option>
+                <option value="laboratorista">Laboratório</option>
+                <option value="medicacao">Medicação</option>
+                <option value="almoxarifado">Almoxarifado</option>
+                <option value="centro_cirurgico">Centro cirúrgico</option>
+                <option value="gestor">Gestor hospitalar</option>
+                <option value="alta">Alta</option>
+                <option value="admin">Administrador</option>
+            </select>
+
+            <button type="submit" id="btnCadastrar">
+                Cadastrar Usuário
+            </button>
+
+            <button type="button" id="btnCancelar" hidden>
+                Cancelar edição
+            </button>
+        </form>
+
+        <p
+            id="mensagem"
+            class="mensagem"
+            role="status"
+            aria-live="polite"
+        ></p>
+
+        <hr class="separador">
+
+        <h3>Usuários Cadastrados</h3>
+
+        <div id="listausuarios" aria-live="polite">
+            <p>Carregando usuários...</p>
+        </div>
+
+        </section>
+    </main>
+
+    <dialog id="modal-paciente" class="patient-modal">
+        <div class="patient-modal-content">
+            <div class="patient-modal-heading">
+                <div>
+                    <span class="admin-eyebrow">FICHA DO PACIENTE</span>
+                    <h2 id="modal-paciente-nome">Informações do paciente</h2>
+                </div>
+                <button type="button" class="patient-modal-close" aria-label="Fechar" onclick="fecharModalPaciente()">×</button>
+            </div>
+            <div id="modal-paciente-dados" class="patient-detail-grid"></div>
+        </div>
+    </dialog>
+
+    <script src="js/app.js"></script>
+    <script>
+    Baymax.iniciar(["admin"]);
+    const sessao = Baymax.lerSessao();
+    const acessoAdmin = Boolean(sessao && sessao.tipo === "admin");
+    if (!acessoAdmin) window.location.replace("index.html");
+    const cadastroForm = document.getElementById("cadastroForm");
+    const campoUsuario = document.getElementById("usuario");
+    const campoNomeFuncionario = document.getElementById("nome-funcionario");
+    const campoSenha = document.getElementById("senha");
+    const campoTipo = document.getElementById("tipo");
+    const btnCadastrar = document.getElementById("btnCadastrar");
+    const btnCancelar = document.getElementById("btnCancelar");
+    const listaUsuarios = document.getElementById("listausuarios");
+    const mensagem = document.getElementById("mensagem");
+    const titulo = document.getElementById("titulo-usuarios");
+    const painelPacientes = document.getElementById("lista-painel-pacientes");
+    const atualizacaoPainel = document.getElementById("atualizacao-painel");
+    const modalPaciente = document.getElementById("modal-paciente");
+    let atualizandoPainel = false;
+    let assinaturaPacientesPainel = null;
+    let ultimaAtualizacaoIndicadores = 0;
+
+    let usuarioEmEdicao = null;
+
+    const setores = {
+        atendimento: "Atendimento",
+        triagem: "Triagem",
+        medico: "Médico",
+        enfermagem: "Enfermagem",
+        tecnico_enfermagem: "Técnico de enfermagem",
+        laboratorista: "Laboratório",
+        medicacao: "Medicação",
+        almoxarifado: "Almoxarifado",
+        centro_cirurgico: "Centro cirúrgico",
+        gestor: "Gestor hospitalar",
+        alta: "Alta",
+        admin: "Administrador"
+    };
+
+    const filasAdmin = [
+        { url: "/pacientes/triagem", etapa: "Aguardando triagem", contador: "total-triagem" },
+        { url: "/pacientes/medico", etapa: "Aguardando médico", contador: "total-medico" },
+        { url: "/pacientes/medicacao", etapa: "Aguardando medicação", contador: "total-medicacao" },
+        { url: "/pacientes/atendidos", etapa: "Aguardando alta", contador: "total-alta" }
+    ];
+
+    function dataHora(valor) {
+        if (!valor) return "Horário não informado";
+        const data = new Date(valor);
+        if (Number.isNaN(data.getTime())) return "Horário não informado";
+        return new Intl.DateTimeFormat("pt-BR", {
+            dateStyle: "short",
+            timeStyle: "short"
+        }).format(data);
+    }
+
+    async function carregarPainelAdmin() {
+        if (atualizandoPainel) return;
+        atualizandoPainel = true;
+        atualizacaoPainel.textContent = "Atualizando filas...";
+
+        try {
+            const resultados = await Promise.all(filasAdmin.map(async fila => {
+                const resposta = await Baymax.fetch(fila.url, {
+                    headers: { "Accept": "application/json" }
+                });
+                const dados = await lerResposta(resposta);
+                if (!Array.isArray(dados)) {
+                    throw new Error(`A fila "${fila.etapa}" retornou dados inválidos.`);
+                }
+                return { ...fila, pacientes: dados };
+            }));
+
+            resultados.forEach(resultado => {
+                document.getElementById(resultado.contador).textContent =
+                    resultado.pacientes.length;
+            });
+
+            if (Date.now() - ultimaAtualizacaoIndicadores >= 30000) {
+                try {
+                    const resumo = await Baymax.api("/relatorios/resumo?periodo=hoje");
+                    const indicadores = resumo.indicadoresHoje;
+                    document.getElementById("indicador-atendimentos").textContent = indicadores.atendimentos;
+                    document.getElementById("indicador-consultas").textContent = indicadores.consultas;
+                    document.getElementById("indicador-cirurgias").textContent = indicadores.cirurgiasHoje;
+                    document.getElementById("indicador-medicos").textContent = indicadores.medicosAtivos;
+                    document.getElementById("indicador-internacoes").textContent = indicadores.internacoesAtivas;
+                    document.getElementById("indicador-exames").textContent = indicadores.examesPendentes;
+                    document.getElementById("indicador-leitos-livres").textContent = indicadores.leitosDisponiveis;
+                    document.getElementById("indicador-leitos-ocupados").textContent = indicadores.leitosOcupados;
+                    document.getElementById("indicador-ocupacao").textContent = `${indicadores.taxaOcupacao}%`;
+                    ultimaAtualizacaoIndicadores = Date.now();
+                } catch (erro) {
+                    console.error("Erro ao atualizar indicadores hospitalares:", erro);
+                }
+            }
+
+            const pacientes = resultados.flatMap(resultado =>
+                resultado.pacientes.map(paciente => ({
+                    ...paciente,
+                    etapa: resultado.etapa
+                }))
+            ).sort((a, b) =>
+                new Date(a.createdAt || 0) - new Date(b.createdAt || 0)
+            );
+
+            document.getElementById("total-pacientes").textContent =
+                `${pacientes.length} paciente${pacientes.length === 1 ? "" : "s"}`;
+            const assinaturaAtual = JSON.stringify(pacientes);
+            if (assinaturaAtual !== assinaturaPacientesPainel) {
+                assinaturaPacientesPainel = assinaturaAtual;
+                painelPacientes.replaceChildren();
+
+                if (pacientes.length === 0) {
+                    const vazio = document.createElement("p");
+                    vazio.className = "admin-empty";
+                    vazio.textContent = "Nenhum paciente aguardando atendimento.";
+                    painelPacientes.appendChild(vazio);
+                } else {
+                    pacientes.forEach(paciente => {
+                        const card = document.createElement("article");
+                        card.className = "admin-patient-card";
+                        const resumo = document.createElement("div");
+                        resumo.className = "admin-patient-summary";
+                        const nome = document.createElement("strong");
+                        nome.textContent = paciente.nome || "Paciente sem nome";
+                        const etapa = document.createElement("span");
+                        etapa.className = "admin-stage";
+                        etapa.textContent = paciente.etapa;
+                        const detalhes = document.createElement("span");
+                        detalhes.className = "admin-patient-meta";
+                        detalhes.textContent = `CPF: ${paciente.cpf || "Não informado"} · Entrada: ${dataHora(paciente.createdAt)}`;
+                        resumo.append(nome, etapa, detalhes);
+
+                        const botao = document.createElement("button");
+                        botao.type = "button";
+                        botao.className = "admin-view-patient";
+                        botao.textContent = "Ver informações";
+                        botao.addEventListener("click", () => abrirModalPaciente(paciente));
+
+                        card.append(resumo, botao);
+                        painelPacientes.appendChild(card);
+                    });
+                }
+            }
+
+            atualizacaoPainel.textContent =
+                `Atualizado às ${new Intl.DateTimeFormat("pt-BR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit"
+                }).format(new Date())} · filas a cada 5 s; indicadores a cada 30 s`;
+        } catch (erro) {
+            console.error("Erro ao atualizar painel administrativo:", erro);
+            atualizacaoPainel.textContent = erro.message || "Não foi possível atualizar as filas.";
+        } finally {
+            atualizandoPainel = false;
+        }
+    }
+
+    function abrirModalPaciente(paciente) {
+        document.getElementById("modal-paciente-nome").textContent =
+            paciente.nome || "Informações do paciente";
+        const dados = document.getElementById("modal-paciente-dados");
+        dados.replaceChildren();
+
+        const campos = [
+            ["Etapa atual", paciente.etapa],
+            ["Data/hora de entrada", dataHora(paciente.createdAt)],
+            ["CPF", paciente.cpf],
+            ["Tipo de atendimento", paciente.tipo],
+            ["Telefone", paciente.telefone],
+            ["E-mail", paciente.email],
+            ["Endereço", paciente.endereco],
+            ["Nome da mãe", paciente.nome_mae],
+            ["Sexo", paciente.sexo],
+            ["Estado civil", paciente.estado_civil],
+            ["Contato de emergência", paciente.contato_emergencia],
+            ["Alergias", (paciente.alergias || []).join(", ")],
+            ["Doenças preexistentes", paciente.doencasPreexistentes],
+            ["Histórico médico", paciente.historicoMedico],
+            ["Alergia registrada na triagem", paciente.triagem && paciente.triagem.alergia],
+            ["Sintomas", paciente.triagem && paciente.triagem.sintoma],
+            ["Temperatura", paciente.triagem && paciente.triagem.temperatura !== undefined
+                ? `${paciente.triagem.temperatura} °C`
+                : ""],
+            ["Classificação de risco", paciente.triagem && paciente.triagem.risco],
+            ["Observações da triagem", paciente.triagem && paciente.triagem.observacao],
+            ["Diagnóstico", paciente.diagnostico],
+            ["Prescrição", paciente.prescricao]
+        ];
+
+        campos.forEach(([rotulo, valor]) => {
+            if (valor === undefined || valor === null || valor === "") return;
+            const item = document.createElement("div");
+            item.className = "patient-detail";
+            const label = document.createElement("span");
+            label.textContent = rotulo;
+            const conteudo = document.createElement("strong");
+            conteudo.textContent = String(valor);
+            item.append(label, conteudo);
+            dados.appendChild(item);
+        });
+
+        modalPaciente.showModal();
+    }
+
+    function fecharModalPaciente() {
+        modalPaciente.close();
+    }
+
+    function exibirMensagem(texto, erro = false) {
+        mensagem.textContent = texto;
+        mensagem.className = erro
+            ? "mensagem erro"
+            : "mensagem sucesso";
+    }
+
+    async function lerResposta(resposta) {
+        const texto = await resposta.text();
+        let dados;
+
+        try {
+            dados = texto ? JSON.parse(texto) : {};
+        } catch {
+            throw new Error("Resposta inválida do servidor.");
+        }
+
+        if (!resposta.ok) {
+            throw new Error(
+                dados.erro || "Não foi possível realizar a operação."
+            );
+        }
+
+        return dados;
+    }
+
+    // Voltar ao modo de cadastro
+    function cancelarEdicao() {
+        usuarioEmEdicao = null;
+
+        cadastroForm.reset();
+
+        campoSenha.required = true;
+        campoSenha.placeholder = "Senha";
+        campoSenha.autocomplete = "new-password";
+
+        titulo.textContent = "Cadastrar Usuário";
+        btnCadastrar.textContent = "Cadastrar Usuário";
+        btnCancelar.hidden = true;
+    }
+
+    // Preparar formulário para editar um usuário
+    function editarUsuario(usuario) {
+        usuarioEmEdicao = usuario.usuario;
+
+        campoUsuario.value = usuario.usuario;
+        campoNomeFuncionario.value = usuario.nome || "";
+        campoTipo.value = usuario.tipo;
+        campoSenha.value = "";
+
+        // Na edição a senha é opcional: vazia = mantém a atual
+        campoSenha.required = false;
+        campoSenha.placeholder = "Nova senha (deixe vazio para manter)";
+        campoSenha.autocomplete = "new-password";
+
+        titulo.textContent = "Editar Usuário";
+        btnCadastrar.textContent = "Salvar Alterações";
+        btnCancelar.hidden = false;
+
+        exibirMensagem("");
+
+        window.scrollTo({ top: 0, behavior: "smooth" });
+
+        campoUsuario.focus();
+    }
+
+    btnCancelar.addEventListener("click", function () {
+        cancelarEdicao();
+        exibirMensagem("");
+    });
+
+    document.getElementById("atualizar-painel").addEventListener(
+        "click",
+        carregarPainelAdmin
+    );
+
+    // Cadastrar ou atualizar usuário
+    cadastroForm.addEventListener("submit", async function (e) {
+        e.preventDefault();
+
+        const usuario = campoUsuario.value.trim();
+        const nome = campoNomeFuncionario.value.trim();
+        const senha = campoSenha.value;
+        const tipo = campoTipo.value;
+
+        const editando = usuarioEmEdicao !== null;
+
+        if (!usuario || !nome || (!editando && !senha.trim()) || !tipo) {
+            exibirMensagem("Preencha todos os campos obrigatórios.", true);
+            return;
+        }
+
+        const usuarioOriginal = usuarioEmEdicao;
+
+        btnCadastrar.disabled = true;
+        btnCancelar.disabled = true;
+
+        btnCadastrar.textContent = editando ? "Salvando..." : "Cadastrando...";
+
+        exibirMensagem("");
+
+        try {
+            const url = editando
+                ? "/usuarios/" + encodeURIComponent(usuarioOriginal)
+                : "/usuarios";
+
+            const resposta = await Baymax.fetch(url, {
+                method: editando ? "PUT" : "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify({ usuario, nome, senha, tipo })
+            });
+
+            const dados = await lerResposta(resposta);
+
+            if (!dados.sucesso) {
+                throw new Error("O servidor não confirmou a operação.");
+            }
+
+            cancelarEdicao();
+
+            exibirMensagem(
+                editando
+                    ? "Usuário atualizado com sucesso!"
+                    : "Usuário cadastrado com sucesso!"
+            );
+
+            await carregarUsuarios();
+
+        } catch (erro) {
+            console.error("Erro ao salvar usuário:", erro);
+
+            exibirMensagem(
+                erro.message || "Erro ao conectar com o servidor.",
+                true
+            );
+        } finally {
+            btnCadastrar.disabled = false;
+            btnCancelar.disabled = false;
+
+            btnCadastrar.textContent = usuarioEmEdicao
+                ? "Salvar Alterações"
+                : "Cadastrar Usuário";
+        }
+    });
+
+    // Excluir usuário com confirmação
+    async function excluirUsuario(usuario) {
+        const confirmou = window.confirm(
+            `Tem certeza de que deseja excluir o usuário "${usuario}"?`
+        );
+
+        if (!confirmou) {
+            return;
+        }
+
+        try {
+            const resposta = await Baymax.fetch(
+                "/usuarios/" + encodeURIComponent(usuario),
+                {
+                    method: "DELETE",
+                    headers: { "Accept": "application/json" }
+                }
+            );
+
+            const dados = await lerResposta(resposta);
+
+            if (!dados.sucesso) {
+                throw new Error("O servidor não confirmou a exclusão.");
+            }
+
+            if (usuarioEmEdicao === usuario) {
+                cancelarEdicao();
+            }
+
+            exibirMensagem("Usuário excluído com sucesso!");
+
+            await carregarUsuarios();
+
+        } catch (erro) {
+            console.error("Erro ao excluir usuário:", erro);
+
+            exibirMensagem(
+                erro.message || "Não foi possível excluir o usuário.",
+                true
+            );
+        }
+    }
+
+    // Carregar usuários cadastrados
+    async function carregarUsuarios() {
+        listaUsuarios.replaceChildren();
+
+        const carregando = document.createElement("p");
+        carregando.textContent = "Carregando usuários...";
+        listaUsuarios.appendChild(carregando);
+
+        try {
+            const resposta = await Baymax.fetch("/usuarios", {
+                headers: { "Accept": "application/json" }
+            });
+
+            const usuarios = await lerResposta(resposta);
+
+            if (!Array.isArray(usuarios)) {
+                throw new Error("O servidor retornou uma lista inválida.");
+            }
+
+            listaUsuarios.replaceChildren();
+
+            if (usuarios.length === 0) {
+                const vazio = document.createElement("p");
+                vazio.textContent = "Nenhum usuário cadastrado.";
+                listaUsuarios.appendChild(vazio);
+                return;
+            }
+
+            usuarios.forEach(function (u) {
+                const card = document.createElement("div");
+                card.className = "card";
+
+                const nome = document.createElement("p");
+                const nomeLabel = document.createElement("strong");
+                nomeLabel.textContent = "Usuário: ";
+                nome.append(nomeLabel, document.createTextNode(u.usuario || ""));
+
+                const nomeFuncionario = document.createElement("p");
+                const funcionarioLabel = document.createElement("strong");
+                funcionarioLabel.textContent = "Nome: ";
+                nomeFuncionario.append(
+                    funcionarioLabel,
+                    document.createTextNode(u.nome || "Não informado")
+                );
+
+                const setor = document.createElement("p");
+                const setorLabel = document.createElement("strong");
+                setorLabel.textContent = "Setor: ";
+                setor.append(
+                    setorLabel,
+                    document.createTextNode(
+                        setores[u.tipo] || u.tipo || "Não informado"
+                    )
+                );
+
+                const acoes = document.createElement("div");
+                acoes.className = "acoes";
+
+                const btnEditar = document.createElement("button");
+                btnEditar.type = "button";
+                btnEditar.textContent = "Editar";
+                btnEditar.addEventListener("click", function () {
+                    editarUsuario(u);
+                });
+
+                const btnExcluir = document.createElement("button");
+                btnExcluir.type = "button";
+                btnExcluir.className = "btn-excluir";
+                btnExcluir.textContent = "Excluir";
+                btnExcluir.addEventListener("click", function () {
+                    excluirUsuario(u.usuario);
+                });
+
+                acoes.append(btnEditar, btnExcluir);
+                card.append(nome, nomeFuncionario, setor, acoes);
+                listaUsuarios.appendChild(card);
+            });
+
+        } catch (erro) {
+            console.error("Erro ao carregar usuários:", erro);
+
+            listaUsuarios.replaceChildren();
+
+            const aviso = document.createElement("p");
+            aviso.textContent = erro.message || "Erro ao carregar os usuários.";
+            listaUsuarios.appendChild(aviso);
+        }
+    }
+
+    modalPaciente.addEventListener("click", evento => {
+        if (evento.target === modalPaciente) fecharModalPaciente();
+    });
+
+    // Keep operational queues and user-management data current while the admin page is open.
+    if (acessoAdmin) {
+        carregarUsuarios();
+        carregarPainelAdmin();
+        window.setInterval(carregarPainelAdmin, 5000);
+    }
+    </script>
+</body>
+</html>

@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#087eac">
+
+  <title>Baymax | Sistema Hospitalar</title>
+
+  <link rel="stylesheet" href="css/style.css">
+
+  <style>
+    :root {
+      --primary: #0284c7;
+      --primary-hover: #0369a1;
+      --primary-light: #e0f2fe;
+      --background: #f0f7fb;
+      --text: #163047;
+      --muted: #64748b;
+      --border: #cbd5e1;
+      --danger: #dc2626;
+      --white: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background:
+        radial-gradient(circle at top left, #d8f1fc 0, transparent 42%),
+        linear-gradient(135deg, #f0f7fb, #e8f2f8);
+      color: var(--text);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 410px;
+      padding: 38px 32px 30px;
+      background: var(--white);
+      border: 1px solid rgba(203, 213, 225, 0.65);
+      border-radius: 22px;
+      box-shadow: 0 18px 50px rgba(15, 55, 80, 0.10);
+      text-align: center;
+      animation: aparecer 0.45s ease-out;
+    }
+
+    .logo {
+      width: 76px;
+      height: 76px;
+      object-fit: contain;
+      display: block;
+      margin: 0 auto 12px;
+      border-radius: 18px;
+    }
+
+    .container h1 {
+      color: var(--primary);
+      font-size: 30px;
+      font-weight: 750;
+      letter-spacing: -0.8px;
+    }
+
+    .subtitulo {
+      margin: 8px 0 28px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .campo {
+      margin-bottom: 17px;
+      text-align: left;
+    }
+
+    .campo label {
+      display: block;
+      margin-bottom: 7px;
+      color: #334155;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .input-wrapper {
+      position: relative;
+    }
+
+    .container input {
+      display: block;
+      width: 100%;
+      min-height: 48px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      outline: none;
+      background: #fff;
+      color: var(--text);
+      font-size: 14px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .container input::placeholder {
+      color: #94a3b8;
+    }
+
+    .container input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.12);
+    }
+
+    .container input.error {
+      border-color: var(--danger);
+      box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.10);
+    }
+
+    #senha {
+      padding-right: 76px;
+    }
+
+
+
+    .container button.toggle-senha {
+      position: absolute;
+      top: 50%;
+      right: 8px;
+      display: inline-flex;
+      width: auto;
+      min-height: 32px;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      padding: 4px 10px;
+      transform: translateY(-50%);
+      border: 0;
+      background: transparent;
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .container button.toggle-senha:hover:not(:disabled) {
+      background: var(--primary-light);
+      color: var(--primary-hover);
+    }
+
+    #msg-erro {
+      display: none;
+      margin-bottom: 17px;
+      padding: 11px 13px;
+      border: 1px solid #fecaca;
+      border-radius: 9px;
+      background: #fef2f2;
+      color: #b91c1c;
+      font-size: 13px;
+      line-height: 1.5;
+      text-align: left;
+    }
+
+    #msg-erro.visivel {
+      display: block;
+    }
+
+    .container button.acao {
+      display: flex;
+      width: 100%;
+      min-height: 48px;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      padding: 12px 16px;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      background: var(--primary);
+      color: var(--white);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+    }
+
+    .container button.acao:hover:not(:disabled) {
+      background: var(--primary-hover);
+      box-shadow: 0 5px 14px rgba(2, 132, 199, 0.2);
+      transform: translateY(-1px);
+    }
+
+    .container button.acao:focus-visible,
+    .toggle-senha:focus-visible {
+      outline: 3px solid #7dd3fc;
+      outline-offset: 3px;
+    }
+
+    .container button.acao:disabled {
+      opacity: 0.7;
+      cursor: wait;
+    }
+
+    .painel-tv {
+      margin-top: 11px;
+      background: #fff !important;
+      color: var(--primary) !important;
+      border-color: #bae6fd !important;
+    }
+
+    .painel-tv:hover:not(:disabled) {
+      background: var(--primary-light) !important;
+      box-shadow: none !important;
+    }
+
+    .separador {
+      height: 1px;
+      margin: 25px 0 18px;
+      background: #e2e8f0;
+    }
+
+    .rodape {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.6;
+    }
+
+    @keyframes aparecer {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 16px;
+      }
+
+      .container {
+        padding: 30px 22px 24px;
+        border-radius: 18px;
+      }
+
+      .container h1 {
+        font-size: 27px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="css/system.css">
+</head>
+
+<body class="page-login">
+
+  <main class="container">
+    <img
+      src="css/Captura de tela 2026-08-06 114854.png"
+      class="logo"
+      alt="Logo do sistema Baymax"
+      width="76"
+      height="76"
+    >
+
+    <h1>Baymax</h1>
+    <p class="subtitulo">
+      Sistema de Gestão Hospitalar<br>
+      Entre com suas credenciais para continuar.
+    </p>
+
+    <div
+      id="msg-erro"
+      role="alert"
+      aria-live="polite"
+    ></div>
+
+    <form id="form-login">
+      <div class="campo">
+        <label for="usuario">Usuário</label>
+        <input
+          id="usuario"
+          name="usuario"
+          type="text"
+          placeholder="Digite seu usuário"
+          autocomplete="username"
+          aria-describedby="msg-erro"
+          required
+        >
+      </div>
+
+      <div class="campo">
+        <label for="senha">Senha</label>
+
+        <div class="input-wrapper">
+          <input
+            id="senha"
+            name="senha"
+            type="password"
+            placeholder="Digite sua senha"
+            autocomplete="current-password"
+            aria-describedby="msg-erro"
+            required
+          >
+
+          <button
+            type="button"
+            class="toggle-senha"
+            id="toggle-senha"
+            aria-controls="senha"
+            aria-pressed="false"
+          >
+            Mostrar
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" class="acao" id="btn-login">
+        <span id="texto-login">Entrar no sistema</span>
+      </button>
+    </form>
+
+    <button
+      type="button"
+      class="acao painel-tv"
+      id="btn-tv"
+    >
+      Abrir Painel TV
+    </button>
+
+    <div class="separador"></div>
+
+    <p class="rodape">
+      Baymax &copy; 2026<br>
+      Sistema de Gestão Hospitalar
+    </p>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script>
+    const inputUsuario = document.getElementById("usuario");
+    const inputSenha = document.getElementById("senha");
+    const msgErro = document.getElementById("msg-erro");
+    const formLogin = document.getElementById("form-login");
+    const btnLogin = document.getElementById("btn-login");
+    const textoLogin = document.getElementById("texto-login");
+    const btnToggleSenha = document.getElementById("toggle-senha");
+
+    function mostrarErro(mensagem, campo = null) {
+      msgErro.textContent = mensagem;
+      msgErro.classList.add("visivel");
+
+      if (campo) {
+        campo.classList.add("error");
+        campo.setAttribute("aria-invalid", "true");
+        campo.focus();
+      }
+    }
+
+    function limparErro() {
+      msgErro.textContent = "";
+      msgErro.classList.remove("visivel");
+    }
+
+    function removerErro(input) {
+      input.classList.remove("error");
+      input.removeAttribute("aria-invalid");
+
+      if (
+        !inputUsuario.classList.contains("error") &&
+        !inputSenha.classList.contains("error")
+      ) {
+        limparErro();
+      }
+    }
+
+    inputUsuario.addEventListener("input", () => {
+      removerErro(inputUsuario);
+    });
+
+    inputSenha.addEventListener("input", () => {
+      removerErro(inputSenha);
+    });
+
+    btnToggleSenha.addEventListener("click", () => {
+      const mostrar = inputSenha.type === "password";
+
+      inputSenha.type = mostrar ? "text" : "password";
+      btnToggleSenha.textContent = mostrar ? "Ocultar" : "Mostrar";
+      btnToggleSenha.setAttribute("aria-pressed", String(mostrar));
+    });
+
+    document.getElementById("btn-tv").addEventListener("click", () => {
+      location.href = "tv.html";
+    });
+
+    formLogin.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      if (btnLogin.disabled) return;
+
+      inputUsuario.classList.remove("error");
+      inputSenha.classList.remove("error");
+      inputUsuario.removeAttribute("aria-invalid");
+      inputSenha.removeAttribute("aria-invalid");
+      limparErro();
+
+      if (!inputUsuario.value.trim()) {
+        mostrarErro("Por favor, informe seu usuário.", inputUsuario);
+        return;
+      }
+
+      if (!inputSenha.value.trim()) {
+        mostrarErro("Por favor, informe sua senha.", inputSenha);
+        return;
+      }
+
+      btnLogin.disabled = true;
+      textoLogin.textContent = "Verificando acesso...";
+
+      try {
+        const resposta = await fetch("/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            usuario: inputUsuario.value,
+            senha: inputSenha.value
+          })
+        });
+
+        // Trata respostas que não sejam JSON válido.
+        let data;
+
+        try {
+          data = await resposta.json();
+        } catch {
+          throw new Error("Resposta inválida do servidor.");
+        }
+
+        if (resposta.ok && data.tipo) {
+          sessionStorage.setItem("usuario", JSON.stringify(data));
+
+          // Mantém o redirecionamento conforme o tipo cadastrado.
+          const paginas = {
+            triagem: "triagem.html",
+            medico: "medico.html",
+            enfermagem: "leitos.html",
+            tecnico_enfermagem: "enfermagem.html",
+            laboratorista: "laboratorio.html",
+            atendimento: "atendimento.html",
+            medicacao: "medicacoes.html",
+            almoxarifado: "almoxerifado.html",
+            centro_cirurgico: "cirurgias.html",
+            gestor: "relatorios.html",
+            alta: "alta.html"
+          };
+
+          if (paginas[data.tipo]) {
+            location.href = paginas[data.tipo];
+            return;
+          }
+
+          mostrarErro("Tipo de usuário não reconhecido.");
+          return;
+        }
+
+        mostrarErro(
+          data.erro || "Usuário ou senha incorretos."
+        );
+
+      } catch (error) {
+        console.error("Erro no login:", error);
+
+        mostrarErro(
+          "Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente."
+        );
+
+      } finally {
+        btnLogin.disabled = false;
+        textoLogin.textContent = "Entrar no sistema";
+      }
+    });
+
+    window.addEventListener("keydown", event => {
+      if (event.ctrlKey && event.altKey && event.key.toLowerCase() === "a") {
+        event.preventDefault();
+        location.href = "acesso-administrativo.html";
+      }
+    });
+
+  </script>
+
+</body>
+</html>
